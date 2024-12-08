@@ -116,8 +116,20 @@ class ZertoClient:
             return vpg_settings
 
         except requests.exceptions.RequestException as e:
-            logging.error(f"Error fetching VPG settings: {e}")
-            sys.exit(1)
+            logging.error(f"HTTPError: {e.response.status_code} - {e.response.reason}")
+            try:
+                error_details = e.response.json()
+                logging.error(f"Error details: {json.dumps(error_details, indent=2)}")
+            except ValueError:
+                logging.error(f"Response content: {e.response.text}")
+            raise
+
+        except Exception as e:
+            logging.error(f"Unexpected error: {e}")
+            raise
+        # except requests.exceptions.RequestException as e:
+        #     logging.error(f"Error fetching VPG settings: {e}")
+        #     sys.exit(1)
 
 ###########################    VPGS Virtual Protection Groups    #######################
 #      Manage VPGs and performs Recovery operations
@@ -148,8 +160,20 @@ class ZertoClient:
             return vpgs
 
         except requests.exceptions.RequestException as e:
-            logging.error(f"Error fetching VPGs: {e}")
-            sys.exit(1)
+            logging.error(f"HTTPError: {e.response.status_code} - {e.response.reason}")
+            try:
+                error_details = e.response.json()
+                logging.error(f"Error details: {json.dumps(error_details, indent=2)}")
+            except ValueError:
+                logging.error(f"Response content: {e.response.text}")
+            raise
+
+        except Exception as e:
+            logging.error(f"Unexpected error: {e}")
+            raise
+        # except requests.exceptions.RequestException as e:
+        #     logging.error(f"Error fetching VPGs: {e}")
+        #     sys.exit(1)
 
     def create_vpg(self, payload, sync):
         vpg_name = payload.get("Basic", {}).get("Name")
@@ -1125,7 +1149,6 @@ class ZertoClient:
         }
 
         try:
-            logging.info("Fetching event categories...")
             response = requests.get(event_categories_uri, headers=headers, verify=verifyCertificate)
             response.raise_for_status()
             event_categories = response.json()
@@ -1142,60 +1165,67 @@ class ZertoClient:
 
 ###########################          FILE LEVEL RESTORE         #######################
 #     Get all mounted volumes. Results can be filtered by a VM identifier. (Auth)
-    def initiate_file_level_restore(self, vpg_name, vm_name, checkpoint_name, initial_download_path):
-        logging.debug(f'initiate_file_level_restore(zvm_address={self.zvm_address} vpg_name={vpg_name} vm_name={vm_name}, checkpoint_name, initial_download_path)')
-        """Initiate a file-level restore operation.
-            Create a new Mount Session. 
-            Mount a disk with specified parameters. 
-            Get the FLR session identifier. (Auth)"
+    def initiate_file_level_restore(self, vpg_name, vm_name, initial_download_path, checkpoint_id=None):
+        logging.debug(f'initiate_file_level_restore(zvm_address={self.zvm_address}, vpg_name={vpg_name}, vm_name={vm_name}, initial_download_path={initial_download_path})')
 
-            The parameters are passed in request_body json file
-            {
+        try:
+            # Fetch VPG ID
+            vpg = self.list_vpgs(vpg_name=vpg_name)
+            vpg_id = vpg['VpgIdentifier']
+
+            # Get checkpoint if not provided
+            if not checkpoint_id:
+                checkpoint = self.list_checkpoints(vpg_name=vpg_name, latest=True)
+                checkpoint_id = checkpoint['CheckpointIdentifier']
+                logging.debug(f'checkpoint_id={checkpoint_id}')
+
+            # Fetch VM details
+            vm = self.list_vms(vm_name=vm_name)
+            # logging.debug(f'vm={vm}')
+            vm_id = vm[0]['VmIdentifier']
+            
+            # if not vm[0]['EnabledActions']['IsFlrEnabled']:
+            #     logging.error(f"File-level restore is not enabled for VM {vm_name}.")
+            #     raise Exception(f"FLR not enabled for VM {vm_name}")
+
+            # Build the payload
+            flr_payload = {
                 "jflr": {
-                    "vpgIdentifier": "string",
-                    "vmIdentifier": "string",
-                    "checkpointIdentifier": "string",
-                    "initialDownloadPath": "string"
+                    "vpgIdentifier": vpg_id,
+                    "vmIdentifier": vm_id,
+                    "checkpointIdentifier": checkpoint_id,
+                    "initialDownloadPath": initial_download_path
                 },
-                "bflr": {
-                    "vpgIdentifier": "string",
-                    "vmIdentifier": "string",
-                    "retentionSetIdentifier": "string",
-                    "repositoryIdentifier": "string",
-                    "repositorySiteIdentifier": "string",
-                    "initialDownloadPath": "string"
-                }
+                "bflr": None # TBD
             }
-        """
-        flr_payload = {
-            "jflr": {
-                "vpgIdentifier": Null,
-                "vmIdentifier": Null,
-                "checkpointIdentifier": Null,
-                "initialDownloadPath": Null
-            },
-            "bflr": {
-                "vpgIdentifier": Null,
-                "vmIdentifier": Null,
-                "retentionSetIdentifier": Null,
-                "repositoryIdentifier": Null,
-                "repositorySiteIdentifier": Null,
-                "initialDownloadPath": Null
+            logging.info(f"FLR Payload: {json.dumps(flr_payload, indent=2)}")
+
+            # Send the request
+            url = f"https://{self.zvm_address}/v1/flrs"
+            headers = {
+                'Content-Type': 'application/json',
+                'Authorization': f'Bearer {self.token}'
             }
-        }
+            response = requests.post(url, json=flr_payload, headers=headers, verify=verifyCertificate)
 
-        vpg_id = self.list_vpgs(vpg_name=vpg_name)
-        logging.debug(f'vpgid={vpg_id}')
-        checkpoint = self.list_checkpoints(vpg_name=vpg_name, latest=True)
-        checkpoint_id = checkpoint['CheckpointIdentifier']
-        logging.debug(f'checkpoint_id={checkpoint_id}')
-       
+            # Raise HTTPError for bad status codes
+            response.raise_for_status()
+            logging.info("FLR initiation successful.")
+            return response.json()
 
-        url = f"{self.base_url}/v1/flrs"
-        response = requests.post(url, json=request_body, headers=self.headers)
-        response.raise_for_status()
-        return response.json()
-    
+        except requests.exceptions.RequestException as e:
+            logging.error(f"HTTPError: {e.response.status_code} - {e.response.reason}")
+            try:
+                error_details = e.response.json()
+                logging.error(f"Error details: {json.dumps(error_details, indent=2)}")
+            except ValueError:
+                logging.error(f"Response content: {e.response.text}")
+            raise
+
+        except Exception as e:
+            logging.error(f"Unexpected error during FLR initiation: {e}")
+            raise
+
 ###########################          VIRTUAL MACHINES         #######################
 #     Get information about virtual machines protected by the current site
     def list_vms(self, vpg_name=None, vm_name=None, status=None, sub_status=None, protected_site_type=None,
@@ -1262,7 +1292,6 @@ class ZertoClient:
             params['includeMountedVms'] = str(include_mounted_vms).lower()
 
         try:
-            logging.info("Fetching event categories...")
             response = requests.get(uri, headers=headers, params=params, verify=verifyCertificate)
             response.raise_for_status()
             event_categories = response.json()
@@ -1279,7 +1308,6 @@ class ZertoClient:
 
 ###########################          VRAS (Virtual Replication Appliances)        #######################
 #     Manage VRAs
-
     def list_vras(self, vra_identifier=None, site_identifier=None, state=None):
         """
         Fetches a list of Virtual Replication Appliances (VRAs) or details of a specific VRA.
@@ -1460,3 +1488,150 @@ class ZertoClient:
         except requests.exceptions.RequestException as e:
             logging.error(f"Error installing VRAs on cluster {cluster_identifier}: {e}")
             sys.exit(1)
+###########################          Licensing        #######################
+#     Manage the current ZVM license
+    def get_license(self):
+        """
+        Fetch license information from the Zerto server.
+
+        Returns:
+            dict: The license information from the Zerto server, or an empty dictionary if no content is returned.
+        """
+        logging.debug(f'get_license(zvm_address={self.zvm_address})')
+
+        url = f"https://{self.zvm_address}/v1/license"
+        headers = {
+            'Content-Type': 'application/json',
+            'Authorization': f'Bearer {self.token}'
+        }
+
+        try:
+            logging.info("Fetching license information...")
+            response = requests.get(url, headers=headers, verify=verifyCertificate)
+
+            # Handle 204 No Content
+            if response.status_code == 204:
+                logging.info("No license information available.")
+                return {}
+
+            # Raise an error for other non-successful HTTP status codes
+            response.raise_for_status()
+
+            # Parse the response JSON
+            license_info = response.json()
+            logging.info("Successfully fetched license information.")
+            return license_info
+
+        except requests.exceptions.RequestException as e:
+            if e.response is not None:
+                logging.error(f"HTTPError: {e.response.status_code} - {e.response.reason}")
+                try:
+                    error_details = e.response.json()
+                    logging.error(f"Error details: {json.dumps(error_details, indent=2)}")
+                except ValueError:
+                    logging.error(f"Response content: {e.response.text}")
+            else:
+                logging.error("HTTPError occurred with no response attached.")
+            raise
+
+        except Exception as e:
+            logging.error(f"Unexpected error while fetching license information: {e}")
+            raise
+
+    def put_license(self, license_key):
+        """
+        Add a new license or update an existing one on the Zerto server.
+
+        Args:
+            license_key (str): The license key to add or update.
+
+        Returns:
+            dict: The response from the Zerto server, or an empty dictionary if no content is returned.
+        """
+        logging.debug(f'put_license(zvm_address={self.zvm_address}, license_key={license_key})')
+
+        url = f"https://{self.zvm_address}/v1/license"
+        headers = {
+            'Content-Type': 'application/json',
+            'Authorization': f'Bearer {self.token}'
+        }
+        payload = {
+            "licenseKey": license_key
+        }
+
+        try:
+            logging.info("Adding or updating license...")
+            response = requests.put(url, json=payload, headers=headers, verify=verifyCertificate)
+
+            # Handle empty response with 200 status code
+            if response.status_code == 200 and not response.content:
+                logging.info("License successfully added or updated with no content returned.")
+                return {}
+
+            # Raise an error for other non-successful HTTP status codes
+            response.raise_for_status()
+
+            # Parse the response JSON
+            response_data = response.json()
+            logging.info("Successfully added or updated license.")
+            return response_data
+
+        except requests.exceptions.RequestException as e:
+            if e.response is not None:
+                logging.error(f"HTTPError: {e.response.status_code} - {e.response.reason}")
+                try:
+                    error_details = e.response.json()
+                    logging.error(f"Error details: {json.dumps(error_details, indent=2)}")
+                except ValueError:
+                    logging.error(f"Response content: {e.response.text}")
+            else:
+                logging.error("HTTPError occurred with no response attached.")
+            raise
+
+        except Exception as e:
+            logging.error(f"Unexpected error while adding or updating license: {e}")
+            raise
+
+    def delete_license(self):
+        """
+        Delete the current license from the Zerto server.
+
+        Returns:
+            dict: The response from the Zerto server.
+        """
+        logging.debug(f'delete_license(zvm_address={self.zvm_address})')
+
+        url = f"https://{self.zvm_address}/v1/license"
+        headers = {
+            'Content-Type': 'application/json',
+            'Authorization': f'Bearer {self.token}'
+        }
+
+        try:
+            logging.info("Deleting license...")
+            response = requests.delete(url, headers=headers, verify=verifyCertificate)
+
+            # Raise an error for non-successful HTTP status codes
+            response.raise_for_status()
+
+            # Parse the response JSON if available
+            if response.content:
+                response_data = response.json()
+                logging.info("License successfully deleted.")
+                return response_data
+            else:
+                logging.info("License successfully deleted with no content returned.")
+                return {}
+
+        except requests.exceptions.RequestException as e:
+            logging.error(f"HTTPError: {e.response.status_code} - {e.response.reason}")
+            try:
+                error_details = e.response.json()
+                logging.error(f"Error details: {json.dumps(error_details, indent=2)}")
+            except ValueError:
+                logging.error(f"Response content: {e.response.text}")
+            raise
+
+        except Exception as e:
+            logging.error(f"Unexpected error while deleting license: {e}")
+            raise
