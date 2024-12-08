@@ -105,25 +105,49 @@ def main():
     vm_instance_type = "m5.large"
     sync = True  # Wait for the installation to complete
 
-    response = zerto_client.install_vra(
-            host_identifier=host_identifier,
-            datastore_identifier=datastore_identifier,
-            network_identifier=network_identifier,
-            host_root_password=host_root_password,
-            memory_in_gb=memory_in_gb,
-            group_name=group_name,
-            vra_ip_config_type=vra_ip_config_type,
-            vra_ip_address=vra_ip_address,
-            vra_ip_address_range_end=vra_ip_address_range_end,
-            subnet_mask=subnet_mask,
-            default_gateway=default_gateway,
-            use_public_key_instead_of_credentials=use_public_key_instead_of_credentials,
-            populate_post_installation=populate_post_installation,
-            num_of_cpus=num_of_cpus,
-            vm_instance_type=vm_instance_type,
-            sync=sync
-        )
-    logging.info(f"VRA installation response: {response}")
+
+    license = zerto_client.get_license()
+    logging.info(f'license={json.dumps(license, indent=2)}')
+
+    response = zerto_client.delete_license()
+    logging.info(f'response={json.dumps(response, indent=2)}')
+
+    license = zerto_client.get_license()
+    logging.info(f'license={json.dumps(license, indent=2)}')
+
+    license = zerto_client.put_license(license_key='HVHGP7H7HKK9FFEX87MVGVREXWUFRBXME6L5ZAXC4Q')
+    logging.info(f'license={json.dumps(license, indent=2)}')
+
+    license = zerto_client.get_license()
+    logging.info(f'license={json.dumps(license, indent=2)}')
+
+    # checkpoints = zerto_client.list_checkpoints(vpg_name='test', start_date='2024-12-02T00:00:00.000Z')
+    # logging.info(f'checkpoints={json.dumps(checkpoints, indent=2)}')
+
+    # flr_response = zerto_client.initiate_file_level_restore(vpg_name='test', vm_name='Debian11', 
+    #                                                                    initial_download_path='Volume1-Ext4/etc/cron.d')
+    # logging.info(f'response={json.dumps(flr_response, indent=2)}')
+
+
+    # response = zerto_client.install_vra(
+    #         host_identifier=host_identifier,
+    #         datastore_identifier=datastore_identifier,
+    #         network_identifier=network_identifier,
+    #         host_root_password=host_root_password,
+    #         memory_in_gb=memory_in_gb,
+    #         group_name=group_name,
+    #         vra_ip_config_type=vra_ip_config_type,
+    #         vra_ip_address=vra_ip_address,
+    #         vra_ip_address_range_end=vra_ip_address_range_end,
+    #         subnet_mask=subnet_mask,
+    #         default_gateway=default_gateway,
+    #         use_public_key_instead_of_credentials=use_public_key_instead_of_credentials,
+    #         populate_post_installation=populate_post_installation,
+    #         num_of_cpus=num_of_cpus,
+    #         vm_instance_type=vm_instance_type,
+    #         sync=sync
+    #     )
+    # logging.info(f"VRA installation response: {response}")
 
     # response = zerto_client.list_vras()
     # logging.info(f'list_vras response={json.dumps(response, indent=2)}')
@@ -170,8 +194,6 @@ def main():
 
     # event_entities = zerto_client.list_event_entities()
     # logging.info(f'event_entities={json.dumps(event_entities, indent=4)}')
-
-    # flr_response = zerto_client.initiate_file_level_restore(vpg_name='ARCUS1', vm_name='SQL_Server1', )
 
     # event_types = zerto_client.list_event_types()
     # logging.info(f'event_types={json.dumps(event_types, indent=4)}')
