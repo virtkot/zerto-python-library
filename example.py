@@ -84,12 +84,14 @@ def main():
     # }
     # host_root_password = "YourPassword"
 
+    response = zerto_client.get_server_date_time(is_utc=False)
+    logging.info(f'response={json.dumps(response, indent=2)}')
 
     # response = zerto_client.list_resource_reports()
     # logging.info(f'license={json.dumps(response, indent=2)}')
 
-    response = zerto_client.get_recovery_reports(recovery_operation_identifier='b1e7156c-48ce-4bf1-b11a-eff22c2f9ef3')
-    logging.info(f'license={json.dumps(response, indent=2)}')
+    # response = zerto_client.get_recovery_reports(recovery_operation_identifier='b1e7156c-48ce-4bf1-b11a-eff22c2f9ef3')
+    # logging.info(f'license={json.dumps(response, indent=2)}')
 
     # response = zerto_client.delete_license()
     # logging.info(f'response={json.dumps(response, indent=2)}')
