@@ -1800,3 +1800,83 @@ class ZertoClient:
         except requests.exceptions.RequestException as e:
             logging.error(f"Error fetching resource reports: {e}")
             return None
+
+###########################         Server Date-Time        #######################
+#     Get ZVM local date-time
+    def get_server_date_time(self, is_utc=False):
+        """
+        Retrieve the server's local date and time from the Zerto API.
+        :param is_utc: If True, returns utc time, if False (default), returns local time
+
+        Returns:
+            str: The server's local date and time as a string.
+        """
+        logging.debug(f"get_server_date_time(is_utc={is_utc})")
+                      
+        # Base URL for the Zerto API
+        url = f"https://{self.zvm_address}/v1/serverDateTime/serverDateTimeLocal"
+        if is_utc:
+            url = f"https://{self.zvm_address}/v1/serverDateTime/serverDateTimeUtc"
+
+        # Headers for the request
+        headers = {
+            "Authorization": f"Bearer {self.token}",
+            "Accept": "application/json",
+        }
+
+        try:
+            logging.info("Fetching server's local date and time...")
+            response = requests.get(url, headers=headers, verify=False)
+
+            if response.status_code == 200:
+                logging.info("Successfully retrieved server date and time.")
+                return response.json()
+            else:
+                logging.error(f"Failed to fetch server date and time. Status Code: {response.status_code}, Response: {response.text}")
+                response.raise_for_status()
+
+        except requests.exceptions.RequestException as e:
+            logging.error(f"Error occurred while fetching server date and time: {e}")
+            raise
+
+    def get_date_time_argument(self, date_time_value):
+        """
+        Checks the system date time casting from the specified parameter.
+
+        Args:
+            date_time_value (str): The date-time value to check. It can be in one of the following formats:
+                - Milliseconds since epoch (e.g., "12321")
+                - UTC format (e.g., "2021-06-07T13:16:00.000Z")
+                - Local time format (e.g., "6/7/2021")
+
+        Returns:
+            dict: The response from the ZVM API containing the processed date-time information.
+        """
+        # Base URL for the Zerto API
+        url = f"https://{self.zvm_address}/v1/serverDateTime/dateTimeArgument"
+
+        # Parameters for the request
+        params = {
+            "dateTimeArgument": date_time_value,
+        }
+
+        # Headers for the request
+        headers = {
+            "Authorization": f"Bearer {self.token}",
+            "Accept": "application/json",
+        }
+
+        try:
+            logging.info(f"Checking date-time argument: {date_time_value}...")
+            response = requests.get(url, headers=headers, params=params, verify=False)
+
+            if response.status_code == 200:
+                logging.info("Successfully validated date-time argument.")
+                return response.json()
+            else:
+                logging.error(f"Failed to validate date-time argument. Status Code: {response.status_code}, Response: {response.text}")
+                response.raise_for_status()
+
+        except requests.exceptions.RequestException as e:
+            logging.error(f"Error occurred while validating date-time argument: {e}")
+            raise
