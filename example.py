@@ -84,8 +84,24 @@ def main():
     # }
     # host_root_password = "YourPassword"
 
-    response = zerto_client.get_server_date_time(is_utc=False)
-    logging.info(f'response={json.dumps(response, indent=2)}')
+    # response = zerto_client.get_login_banner()
+    # logging.debug(f'response={json.dumps(response, indent=2)}') 
+
+
+    # response = zerto_client.get_login_banner()
+    # logging.debug(f'response={json.dumps(response, indent=2)}') 
+
+    # response = zerto_client.send_usage()
+    # logging.debug(f'response={response}')
+
+    # paitring_status = zerto_client.get_pairing_statuses()
+    # logging.debug(f'paitring_status={json.dumps(paitring_status, indent=2)}')
+
+    # local_site_info = zerto_client.get_local_site()
+    # logging.debug(f'local_site_info={json.dumps(local_site_info, indent=2)}')
+
+    # response = zerto_client.get_server_date_time(is_utc=False)
+    # logging.info(f'response={json.dumps(response, indent=2)}')
 
     # response = zerto_client.list_resource_reports()
     # logging.info(f'license={json.dumps(response, indent=2)}')

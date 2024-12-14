@@ -1880,3 +1880,136 @@ class ZertoClient:
         except requests.exceptions.RequestException as e:
             logging.error(f"Error occurred while validating date-time argument: {e}")
             raise
+
+###########################         Local Site        #######################
+#     Get information about the current ZVM site
+    def get_local_site(self):
+        """
+        Get information about the local site.
+
+        Returns:
+            dict: The response from the ZVM API containing details about the local site.
+        """
+        # Base URL for the Zerto API
+        url = f"https://{self.zvm_address}/v1/localsite"
+
+        # Headers for the request
+        headers = {
+            "Authorization": f"Bearer {self.token}",
+            "Accept": "application/json",
+        }
+
+        try:
+            logging.info("Fetching local site information...")
+            response = requests.get(url, headers=headers, verify=False)
+
+            if response.status_code == 200:
+                logging.info("Successfully retrieved local site information.")
+                return response.json()
+            else:
+                logging.error(f"Failed to fetch local site information. Status Code: {response.status_code}, Response: {response.text}")
+                response.raise_for_status()
+
+        except requests.exceptions.RequestException as e:
+            logging.error(f"Error occurred while fetching local site information: {e}")
+            raise
+
+    def get_pairing_statuses(self):
+        """
+        Get the list of acceptable values for site pairing statuses.
+
+        Returns:
+            dict: The response from the ZVM API containing the site pairing statuses.
+        """
+        # Base URL for the Zerto API
+        url = f"https://{self.zvm_address}/v1/localsite/pairingstatuses"
+
+        # Headers for the request
+        headers = {
+            "Authorization": f"Bearer {self.token}",
+            "Accept": "application/json",
+        }
+
+        try:
+            logging.info("Fetching pairing statuses...")
+            response = requests.get(url, headers=headers, verify=False)
+
+            if response.status_code == 200:
+                logging.info("Successfully retrieved pairing statuses.")
+                return response.json()
+            else:
+                logging.error(f"Failed to fetch pairing statuses. Status Code: {response.status_code}, Response: {response.text}")
+                response.raise_for_status()
+
+        except requests.exceptions.RequestException as e:
+            logging.error(f"Error occurred while fetching pairing statuses: {e}")
+            raise
+
+    def send_usage(self):
+        """
+        Send the local site billing usage data.
+
+        This method triggers a request to the ZVM API to send the billing usage data.
+
+        Returns:
+            dict or None: The response from the ZVM API, or None if the response is empty.
+        """
+        # Base URL for the Zerto API
+        url = f"https://{self.zvm_address}/v1/localsite/billing/sendUsage"
+
+        # Headers for the request
+        headers = {
+            "Authorization": f"Bearer {self.token}",
+            "Accept": "application/json",
+            "Content-Type": "application/json",
+        }
+
+        try:
+            logging.info("Sending local site billing usage...")
+            response = requests.post(url, headers=headers, verify=False)
+
+            if response.status_code == 200:
+                if response.content.strip():  # Check if response content is not empty
+                    logging.info("Successfully sent billing usage data.")
+                    return response.json()
+                else:
+                    logging.info("Successfully sent billing usage data. No content returned.")
+                    return None  # Return None for empty response content
+            else:
+                logging.error(f"Failed to send billing usage data. Status Code: {response.status_code}, Response: {response.text}")
+                response.raise_for_status()
+
+        except requests.exceptions.RequestException as e:
+            logging.error(f"Error occurred while sending billing usage: {e}")
+            raise
+
+    def get_login_banner(self):
+        """
+        Retrieve the login banner settings of the current site.
+
+        Returns:
+            dict: The login banner settings as returned by the Zerto API.
+        """
+        # Base URL for the Zerto API
+        url = f"https://{self.zvm_address}/v1/localsite/settings/loginBanner"
+
+        # Headers for the request
+        headers = {
+            "Authorization": f"Bearer {self.token}",
+            "Accept": "application/json",
+        }
+
+        try:
+            logging.info("Fetching login banner settings...")
+            response = requests.get(url, headers=headers, verify=False)
+
+            if response.status_code == 200:
+                logging.info("Successfully retrieved login banner settings.")
+                return response.json()
+            else:
+                logging.error(f"Failed to fetch login banner settings. Status Code: {response.status_code}, Response: {response.text}")
+                response.raise_for_status()
+
+        except requests.exceptions.RequestException as e:
+            logging.error(f"Error occurred while fetching login banner settings: {e}")
+            raise
