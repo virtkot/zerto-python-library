@@ -1,3 +1,13 @@
+# Legal Disclaimer
+# This script is an example script and is not supported under any Zerto support program or service. 
+# The author and Zerto further disclaim all implied warranties including, without limitation, 
+# any implied warranties of merchantability or of fitness for a particular purpose.
+# In no event shall Zerto, its authors or anyone else involved in the creation, 
+# production or delivery of the scripts be liable for any damages whatsoever (including, 
+# without limitation, damages for loss of business profits, business interruption, loss of business 
+# information, or other pecuniary loss) arising out of the use of or the inability to use the sample 
+# scripts or documentation, even if the author or Zerto has been advised of the possibility of such damages. 
+# The entire risk arising out of the use or performance of the sample scripts and documentation remains with you.
 import urllib3
 import json
 import argparse
@@ -57,6 +67,7 @@ def main():
         logging.error(f"Error loading VMs payload: {e}")
         sys.exit(1)
 
+
     # # Parameters for VRA installation on cluster
     # cluster_identifier = "79e3f102-92c2-4c3a-9783-6367165e8c73.domain-c22"
     # datastore_identifier = "79e3f102-92c2-4c3a-9783-6367165e8c73.datastore-13"
@@ -73,6 +84,33 @@ def main():
     # }
     # host_root_password = "YourPassword"
 
+
+    # response = zerto_client.list_resource_reports()
+    # logging.info(f'license={json.dumps(response, indent=2)}')
+
+    response = zerto_client.get_recovery_reports(recovery_operation_identifier='b1e7156c-48ce-4bf1-b11a-eff22c2f9ef3')
+    logging.info(f'license={json.dumps(response, indent=2)}')
+
+    # response = zerto_client.delete_license()
+    # logging.info(f'response={json.dumps(response, indent=2)}')
+
+    # license = zerto_client.get_license()
+    # logging.info(f'license={json.dumps(license, indent=2)}')
+
+    # license = zerto_client.put_license(license_key='HVHGP7H7HKK9FFEX87MVGVREXWUFRBXME6L5ZAXC4Q')
+    # logging.info(f'license={json.dumps(license, indent=2)}')
+
+    # license = zerto_client.get_license()
+    # logging.info(f'license={json.dumps(license, indent=2)}')
+
+    # checkpoints = zerto_client.list_checkpoints(vpg_name='test', start_date='2024-12-02T00:00:00.000Z')
+    # logging.info(f'checkpoints={json.dumps(checkpoints, indent=2)}')
+
+    # flr_response = zerto_client.initiate_file_level_restore(vpg_name='test', vm_name='Debian11', 
+    #                                                                    initial_download_path='Volume1-Ext4/etc/cron.d')
+    # logging.info(f'response={json.dumps(flr_response, indent=2)}')
+
+
     # task_id = zerto_client.install_vra_on_cluster(
     #     cluster_identifier=cluster_identifier,
     #     datastore_identifier=datastore_identifier,
@@ -87,46 +125,23 @@ def main():
     # print(f"VRA Installation Task Completed: {task_id}")
 
 
-    # Parameters for VRA installation
-    host_identifier = "12fb5b13-8740-41f9-a76c-2740221b6006.host-18"
-    datastore_identifier = "12fb5b13-8740-41f9-a76c-2740221b6006.datastore-11"
-    network_identifier = "12fb5b13-8740-41f9-a76c-2740221b6006.network-14"
-    host_root_password = "your-host-password"
-    memory_in_gb = 3
-    group_name = "default_group"
-    vra_ip_config_type = "STATIC"  # or "DHCP"
-    vra_ip_address = "192.168.111.31"
-    vra_ip_address_range_end = "192.168.111.35"
-    subnet_mask = "255.255.255.0"
-    default_gateway = "192.168.111.254"
-    use_public_key_instead_of_credentials = True
-    populate_post_installation = True
-    num_of_cpus = 2
-    vm_instance_type = "m5.large"
-    sync = True  # Wait for the installation to complete
-
-
-    license = zerto_client.get_license()
-    logging.info(f'license={json.dumps(license, indent=2)}')
-
-    response = zerto_client.delete_license()
-    logging.info(f'response={json.dumps(response, indent=2)}')
-
-    license = zerto_client.get_license()
-    logging.info(f'license={json.dumps(license, indent=2)}')
-
-    license = zerto_client.put_license(license_key='HVHGP7H7HKK9FFEX87MVGVREXWUFRBXME6L5ZAXC4Q')
-    logging.info(f'license={json.dumps(license, indent=2)}')
-
-    license = zerto_client.get_license()
-    logging.info(f'license={json.dumps(license, indent=2)}')
-
-    # checkpoints = zerto_client.list_checkpoints(vpg_name='test', start_date='2024-12-02T00:00:00.000Z')
-    # logging.info(f'checkpoints={json.dumps(checkpoints, indent=2)}')
-
-    # flr_response = zerto_client.initiate_file_level_restore(vpg_name='test', vm_name='Debian11', 
-    #                                                                    initial_download_path='Volume1-Ext4/etc/cron.d')
-    # logging.info(f'response={json.dumps(flr_response, indent=2)}')
+    # # Parameters for VRA installation
+    # host_identifier = "12fb5b13-8740-41f9-a76c-2740221b6006.host-18"
+    # datastore_identifier = "12fb5b13-8740-41f9-a76c-2740221b6006.datastore-11"
+    # network_identifier = "12fb5b13-8740-41f9-a76c-2740221b6006.network-14"
+    # host_root_password = "your-host-password"
+    # memory_in_gb = 3
+    # group_name = "default_group"
+    # vra_ip_config_type = "STATIC"  # or "DHCP"
+    # vra_ip_address = "192.168.111.31"
+    # vra_ip_address_range_end = "192.168.111.35"
+    # subnet_mask = "255.255.255.0"
+    # default_gateway = "192.168.111.254"
+    # use_public_key_instead_of_credentials = True
+    # populate_post_installation = True
+    # num_of_cpus = 2
+    # vm_instance_type = "m5.large"
+    # sync = True  # Wait for the installation to complete
 
 
     # response = zerto_client.install_vra(
