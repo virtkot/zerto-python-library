@@ -16,6 +16,7 @@ import ssl
 import time
 from datetime import datetime
 import pytz
+from enum import Enum
 
 # Disable SSL warnings for self-signed certificates
 context = ssl._create_unverified_context()
@@ -24,6 +25,31 @@ verifyCertificate = False  # Toggle SSL verification
 # Setup logging
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
 
+class ZertoTaskStates(Enum):
+    FirstUnusedValue = 0
+    InProgress = 1
+    WaitingForUserInput = 2
+    Paused = 3
+    Failed = 4
+    Stopped = 5
+    Completed = 6
+    Cancelling = 7
+    @classmethod
+    def get_name_by_value(cls, value):
+        """
+        Get the name of the enum member given its value.
+
+        Args:
+            value (int): The value of the enum member.
+
+        Returns:
+            str: The name of the enum member.
+            None: If the value does not match any enum member.
+        """
+        for member in cls:
+            if member.value == value:
+                return member.name
+        return None
 class ZertoClient:
     def __init__(self, zvm_address, client_id, client_secret):
         self.zvm_address = zvm_address
@@ -713,7 +739,7 @@ class ZertoClient:
             logging.error(f"Error creating VPG settings: {e}")
             sys.exit(1)
 
-    def wait_for_task_completion(self, task_identifier, timeout=600, interval=5):
+    def wait_for_task_completion(self, task_identifier, timeout=600, interval=5, expected_task_state: ZertoTaskStates = ZertoTaskStates.Completed):
         logging.debug(f'wait_for_task_completion(zvm_address={self.zvm_address}, task_identifier={task_identifier}, timeout={timeout}, interval={interval})')
         start_time = time.time()
         headers = {
@@ -726,15 +752,18 @@ class ZertoClient:
             response = requests.get(url, headers=headers, verify=verifyCertificate)
             response.raise_for_status()
             task_info = response.json()
-            status = task_info.get("Status", {}).get("State", -1)
+            state = task_info.get("Status", {}).get("State", -1)
             progress = task_info.get("Status", {}).get("Progress", 0)
-            logging.debug(f'Task response: status={status}, progress={progress}')
+            logging.debug(f'Task response: status={ZertoTaskStates.get_name_by_value(state)}, progress={progress}')
 
-            if status == 6 and progress == 100:
+            if state == expected_task_state.value and progress == 100:
                 logging.info("Task completed successfully.")
                 time.sleep(interval)
                 return task_info
-            elif status == 2:
+            elif state == ZertoTaskStates.InProgress.value:
+                continue
+            else:
+                logging.error(f'Task ID={task_identifier} failed. task state={ZertoTaskStates.get_name_by_value(state)}')
                 raise Exception(f"Task failed: {task_info.get('CompleteReason', 'No reason provided')}")
 
             elapsed_time = time.time() - start_time
@@ -2012,4 +2041,288 @@ class ZertoClient:
 
         except requests.exceptions.RequestException as e:
             logging.error(f"Error occurred while fetching login banner settings: {e}")
+            raise
+
+###########################         Peer Sites        #######################
+#     Get a list of paired sites and pairs to a new site
+    def get_peer_sites(self, site_identifier=None, peer_name=None, pairing_status=None, location=None, host_name=None, port=None):
+        """
+        Get a list of all peer sites or details of a specific peer site.
+
+        Args:
+            site_identifier (str, optional): The unique identifier of the peer site.
+            peer_name (str, optional): The name of a peer site. Case-sensitive.
+            pairing_status (str, optional): The pairing status. Related endpoint: /v1/peersites/pairingstatuses.
+            location (str, optional): The site location, as specified in the site information.
+            host_name (str, optional): The IP address of a ZVM, paired with this site.
+            port (int, optional): The port used to access peer sites. Default port is 9081.
+
+        Returns:
+            dict: The response from the Zerto API containing peer site details.
+        """
+        if site_identifier:
+            uri = f"https://{self.zvm_address}/v1/peersites/{site_identifier}"
+        else:
+            uri = f"https://{self.zvm_address}/v1/peersites"
+
+        headers = {
+            'Authorization': f'Bearer {self.token}',
+            'Accept': 'application/json'
+        }
+
+        params = {}
+        if peer_name:
+            params["peerName"] = peer_name
+        if pairing_status:
+            params["pairingStatus"] = pairing_status
+        if location:
+            params["location"] = location
+        if host_name:
+            params["hostName"] = host_name
+        if port:
+            params["port"] = port
+
+        try:
+            logging.debug(f"get_peer_sites(site_identifier={site_identifier}, peer_name={peer_name}, pairing_status={pairing_status}, "
+                        f"location={location}, host_name={host_name}, port={port})")
+
+            response = requests.get(uri, headers=headers, params=params if not site_identifier else None, verify=verifyCertificate)
+            response.raise_for_status()
+
+            if response.status_code == 200:
+                logging.info("Successfully retrieved peer site(s).")
+                return response.json()
+            else:
+                logging.warning(f"No peer sites found. Status Code: {response.status_code}")
+                return None
+
+        except requests.exceptions.RequestException as e:
+            logging.error(f"Error occurred while fetching peer site(s): {e}")
+            if e.response is not None:
+                try:
+                    error_details = e.response.json()
+                    logging.error(f"Error details: {json.dumps(error_details, indent=2)}")
+                except ValueError:
+                    logging.error(f"Response content: {e.response.text}")
+            raise
+
+    def add_peer_site(self, host_name, token, port=9071, sync=False):
+        """
+        Add a peer site (start pairing) and optionally wait for task completion.
+
+        Args:
+            host_name (str): The hostname or IP of the peer site.
+            token (str): The pairing token for the peer site.
+            port (int): The port to use for pairing. Default is 9081.
+            sync (bool): Whether to wait for the pairing task to complete. Default is False.
+
+        Returns:
+            str: The task ID for the pairing process.
+        """
+        logging.debug(f"add_peer_site(host_name={host_name}, port={port}, token={token}, sync={sync})")
+
+        if port is None or not (1 <= port <= 65535):
+            raise ValueError(f"Invalid port specified ({port}). Port must be in the range 1-65535.")
+
+        url = f"https://{self.zvm_address}/v1/peersites"
+        headers = {
+            'Content-Type': 'application/json',
+            'Authorization': f'Bearer {self.token}'
+        }
+        payload = {
+            "hostName": host_name,
+            "port": port,
+            "token": token
+        }
+
+        try:
+            logging.info(f"Adding peer site with hostName={host_name}, port={port}...")
+            response = requests.post(url, json=payload, headers=headers, verify=verifyCertificate)
+
+            # Log response details
+            logging.debug(f"Response Status Code: {response.status_code}")
+            logging.debug(f"Response Headers: {response.headers}")
+            logging.debug(f"Response Content: {response.text}")
+
+            # Check for successful response
+            response.raise_for_status()
+
+            # Handle string response (task ID)
+            task_id = response.text.strip().strip('"')  # Strip surrounding quotes
+            logging.info(f"Peer site pairing initiated successfully. Task ID: {task_id}")
+
+            if sync:
+                # Wait for task completion
+                self.wait_for_task_completion(task_id, timeout=60, interval=5, expected_task_state=ZertoTaskStates.Completed)
+                logging.info(f"Task {task_id} completed successfully.")
+
+            return task_id
+
+        except requests.exceptions.RequestException as e:
+            if e.response is not None:
+                logging.error(f"HTTPError: {e.response.status_code} - {e.response.reason}")
+                try:
+                    error_details = e.response.json()
+                    logging.error(f"Error Message: {error_details.get('Message', 'No detailed error message available')}")
+                except ValueError:
+                    logging.error(f"Response content: {e.response.text}")
+            else:
+                logging.error("HTTPError occurred with no response attached.")
+            raise
+
+        except Exception as e:
+            logging.error(f"Unexpected error while adding peer site: {e}")
+            raise
+
+    def delete_peer_site(self, site_identifier, sync=False):
+        """
+        Delete a peer site and optionally wait for the task to complete.
+
+        Args:
+            site_identifier (str): The unique identifier of the peer site to delete.
+            sync (bool): Whether to wait for the deletion task to complete. Default is False.
+
+        Returns:
+            str: The task ID for the deletion process.
+        """
+        logging.debug(f"delete_peer_site(site_identifier={site_identifier}, sync={sync})")
+
+        if not site_identifier:
+            raise ValueError("site_identifier cannot be empty or None.")
+
+        url = f"https://{self.zvm_address}/v1/peersites/{site_identifier}"
+        headers = {
+            'Authorization': f'Bearer {self.token}'
+        }
+
+        try:
+            logging.info(f"Deleting peer site with siteIdentifier={site_identifier}...")
+            response = requests.delete(url, headers=headers, verify=verifyCertificate)
+
+            # Log response details
+            logging.debug(f"Response Status Code: {response.status_code}")
+            logging.debug(f"Response Headers: {response.headers}")
+            logging.debug(f"Response Content: {response.text}")
+
+            # Check for successful response
+            response.raise_for_status()
+
+            # Handle string response (task ID)
+            task_id = response.text.strip().strip('"')  # Strip surrounding quotes
+            logging.info(f"Peer site deletion initiated successfully. Task ID: {task_id}")
+
+            if sync:
+                # Wait for task completion
+                self.wait_for_task_completion(task_id, timeout=60, interval=5, expected_task_state=ZertoTaskStates.Completed)
+                logging.info(f"Task {task_id} completed successfully.")
+
+            return task_id
+
+        except requests.exceptions.RequestException as e:
+            if e.response is not None:
+                logging.error(f"HTTPError: {e.response.status_code} - {e.response.reason}")
+                try:
+                    error_details = e.response.json()
+                    logging.error(f"Error Message: {error_details.get('Message', 'No detailed error message available')}")
+                except ValueError:
+                    logging.error(f"Response content: {e.response.text}")
+            else:
+                logging.error("HTTPError occurred with no response attached.")
+            raise
+
+        except Exception as e:
+            logging.error(f"Unexpected error while deleting peer site: {e}")
+            raise
+
+    def get_peer_sites_pairing_statuses(self):
+        """
+        Get the list of acceptable values for site pairing statuses.
+
+        Returns:
+            list: A list of pairing statuses.
+        """
+        logging.debug("get_peer_sites_pairing_statuses()")
+
+        url = f"https://{self.zvm_address}/v1/peersites/pairingstatuses"
+        headers = {
+            'Authorization': f'Bearer {self.token}'
+        }
+
+        try:
+            logging.info("Fetching pairing statuses for peer sites...")
+            response = requests.get(url, headers=headers, verify=verifyCertificate)
+
+            # Log response details
+            logging.debug(f"Response Status Code: {response.status_code}")
+            logging.debug(f"Response Headers: {response.headers}")
+            logging.debug(f"Response Content: {response.text}")
+
+            # Check for successful response
+            response.raise_for_status()
+
+            pairing_statuses = response.json()
+            logging.info("Successfully retrieved pairing statuses.")
+            return pairing_statuses
+
+        except requests.exceptions.RequestException as e:
+            if e.response is not None:
+                logging.error(f"HTTPError: {e.response.status_code} - {e.response.reason}")
+                try:
+                    error_details = e.response.json()
+                    logging.error(f"Error Message: {error_details.get('Message', 'No detailed error message available')}")
+                except ValueError:
+                    logging.error(f"Response content: {e.response.text}")
+            else:
+                logging.error("HTTPError occurred with no response attached.")
+            raise
+
+        except Exception as e:
+            logging.error(f"Unexpected error while fetching pairing statuses: {e}")
+            raise
+
+    def generate_peer_site_token(self):
+        """
+        Generate a token for pairing with a peer site.
+
+        Returns:
+            str: The generated token for peer site pairing.
+        """
+        logging.debug("generate_peer_site_token()")
+
+        url = f"https://{self.zvm_address}/v1/peersites/generatetoken"
+        headers = {
+            'Authorization': f'Bearer {self.token}'
+        }
+
+        try:
+            logging.info("Generating peer site pairing token...")
+            response = requests.post(url, headers=headers, verify=verifyCertificate)
+
+            # Log response details
+            logging.debug(f"Response Status Code: {response.status_code}")
+            logging.debug(f"Response Headers: {response.headers}")
+            logging.debug(f"Response Content: {response.text}")
+
+            # Check for successful response
+            response.raise_for_status()
+
+            # Return the token as a string
+            token = response.text.strip().strip('"')  # Strip surrounding quotes if present
+            logging.info("Successfully generated peer site pairing token.")
+            return token
+
+        except requests.exceptions.RequestException as e:
+            if e.response is not None:
+                logging.error(f"HTTPError: {e.response.status_code} - {e.response.reason}")
+                try:
+                    error_details = e.response.json()
+                    logging.error(f"Error Message: {error_details.get('Message', 'No detailed error message available')}")
+                except ValueError:
+                    logging.error(f"Response content: {e.response.text}")
+            else:
+                logging.error("HTTPError occurred with no response attached.")
+            raise
+
+        except Exception as e:
+            logging.error(f"Unexpected error while generating peer site pairing token: {e}")
             raise
