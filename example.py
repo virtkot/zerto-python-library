@@ -84,9 +84,23 @@ def main():
     # }
     # host_root_password = "YourPassword"
 
-    # response = zerto_client.get_login_banner()
+    
+    # response = zerto_client.generate_peer_site_token()
     # logging.debug(f'response={json.dumps(response, indent=2)}') 
 
+    # response = zerto_client.get_peer_sites_pairing_statuses()
+    # logging.debug(f'response={json.dumps(response, indent=2)}') 
+
+    # response = zerto_client.add_peer_site(host_name='192.168.222.20', 
+    #                                         token='pZf2XlgWMJroja50mNXVlLfx01KQFg2MwoIHybtWhw3r8bVe/OtE0/5zAuM+Uj04sqJDSoW1/gs=',
+    #                                         sync=True)
+    # logging.debug(f'response={response}') 
+
+    # response = zerto_client.delete_peer_site(site_identifier='0c15efd4-11d7-45eb-992b-3fbfea4d08fb', sync=True)
+    # logging.debug(f'response={response}') 
+
+    # peer_sites = zerto_client.get_peer_sites(site_identifier='0c15efd4-11d7-45eb-992b-3fbfea4d08fb')
+    # logging.debug(f'peer_sites={json.dumps(peer_sites, indent=2)}') 
 
     # response = zerto_client.get_login_banner()
     # logging.debug(f'response={json.dumps(response, indent=2)}') 
