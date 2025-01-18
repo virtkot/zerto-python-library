@@ -18,6 +18,12 @@ def connect_to_vcenter(vcenter_ip, vcenter_user, vcenter_password):
         logging.error(f"Failed to connect to vCenter: {e}")
         sys.exit(1)
 
+# Function to get the vCenter server's instance UUID
+def get_vcenter_server_uuid(si):
+    content = si.RetrieveContent()
+    vcenter_uuid = content.about.instanceUuid  # This should be the system-wide UUID you're looking for
+    return vcenter_uuid
+
 # Function to list all hosts with the vCenter Server UUID
 def list_hosts(si):
     # Get the common vCenter UUID
@@ -60,32 +66,52 @@ def list_datastores(si):
 
     return datastore_list
 
-# Function to list all resource pools
+# Function to list all resource pools with the vCenter Server UUID and cluster ID
 def list_resource_pools(si):
     content = si.RetrieveContent()
     container = content.viewManager.CreateContainerView(content.rootFolder, [vim.ResourcePool], True)
     resource_pools = container.view
     resource_pool_list = []
+
     for pool in resource_pools:
+        # Get the cluster ID
+        cluster = pool.owner
+        cluster_id = cluster._moId.split('-')[-1]
+
+        # Get the vCenter UUID
+        vcenter_uuid = get_vcenter_server_uuid(si)
+
+        # Construct the resource pool identifier
+        resource_pool_identifier = f"{vcenter_uuid}.resgroup-{cluster_id}"
+
         resource_pool_info = {
             "Name": pool.name,
-            "Identifier": pool._moId
+            "Identifier": resource_pool_identifier
         }
         resource_pool_list.append(resource_pool_info)
+
     return resource_pool_list
 
-# Function to list all networks
+# Function to list all networks with the vCenter Server UUID and network ID
 def list_networks(si):
     content = si.RetrieveContent()
     container = content.viewManager.CreateContainerView(content.rootFolder, [vim.Network], True)
     networks = container.view
     network_list = []
+
     for network in networks:
+        # Get the vCenter UUID
+        vcenter_uuid = get_vcenter_server_uuid(si)
+
+        # Construct the network identifier
+        network_id = f"{vcenter_uuid}.network-{network._moId.split('-')[-1]}"
+
         network_info = {
             "Name": network.name,
-            "Identifier": network._moId
+            "Identifier": network_id
         }
         network_list.append(network_info)
+
     return network_list
 
 # Function to list all VMs with the vCenter Server UUID
@@ -124,34 +150,125 @@ def list_vms_with_details(si, vm_name=None):
 
     return vm_list
 
-# Function to list all folders with the correct identifier format
+def list_datacenter_children(si):
+    """
+    Lists all child objects under each Datacenter in the vCenter environment.
+    """
+    content = si.RetrieveContent()
+    container = content.rootFolder
+    datacenter_children = []
+
+    # Iterate through all child entities in the rootFolder to find Datacenters
+    for child_entity in container.childEntity:
+        if isinstance(child_entity, vim.Datacenter):
+            datacenter_info = {
+                'Datacenter': child_entity.name,
+                'Children': []
+            }
+
+            # Add vmFolder
+            if child_entity.vmFolder:
+                datacenter_info['Children'].append({
+                    'Type': 'vmFolder',
+                    'Name': child_entity.vmFolder.name,
+                    'MoID': child_entity.vmFolder._moId
+                })
+
+            # Add datastoreFolder
+            if child_entity.datastoreFolder:
+                datacenter_info['Children'].append({
+                    'Type': 'datastoreFolder',
+                    'Name': child_entity.datastoreFolder.name,
+                    'MoID': child_entity.datastoreFolder._moId
+                })
+
+            # Add networkFolder
+            if child_entity.networkFolder:
+                datacenter_info['Children'].append({
+                    'Type': 'networkFolder',
+                    'Name': child_entity.networkFolder.name,
+                    'MoID': child_entity.networkFolder._moId
+                })
+
+            # Add hostFolder
+            if child_entity.hostFolder:
+                datacenter_info['Children'].append({
+                    'Type': 'hostFolder',
+                    'Name': child_entity.hostFolder.name,
+                    'MoID': child_entity.hostFolder._moId
+                })
+
+            datacenter_children.append(datacenter_info)
+
+    return datacenter_children
+
 def list_folders(si):
+    """
+    Lists VM folders for each Datacenter in the vCenter environment,
+    including the root vmFolder ("/") for each Datacenter and its subfolders.
+    """
     # Get the vCenter Server UUID
     vcenter_uuid = get_vcenter_server_uuid(si)
 
-    content = si.RetrieveContent()
-    container = content.rootFolder
-    viewType = [vim.Folder]
-    recursive = True
-    containerView = content.viewManager.CreateContainerView(container, viewType, recursive)
-
-    folders = containerView.view
+    # List all child objects of Datacenters
+    datacenter_children = list_datacenter_children(si)
     folder_identifiers = []
 
-    for folder in folders:
-        # Get the MoID of the folder
-        folder_moid = folder._moId.split('-')[-1]
+    for datacenter in datacenter_children:
+        # Filter for the vmFolder element by its Type
+        vm_folder = next((child for child in datacenter["Children"] if child["Type"] == "vmFolder"), None)
+        if vm_folder:
+            # Construct FolderIdentifier in the format <vcenter_uuid>.group-v<MoID>
+            vm_folder_identifier = f"{vcenter_uuid}.{vm_folder['MoID']}"
 
-        # Construct FolderIdentifier in the correct format: <vcenter_uuid>.group-v<MoID>
-        folder_identifier = f"{vcenter_uuid}.group-v{folder_moid}"
+            # Append the root folder ("/") for the current Datacenter
+            folder_identifiers.append({
+                "Datacenter": datacenter["Datacenter"],
+                "Name": "/",
+                "Identifier": vm_folder_identifier
+            })
 
-        # Collect folder information
-        folder_identifiers.append({
-            'Name': folder.name,
-            'Identifier': folder_identifier
-        })
+            # Recursively explore child folders under the root vmFolder
+            folder_identifiers += explore_folder(vm_folder["MoID"], si, vcenter_uuid, datacenter["Datacenter"])
 
     return folder_identifiers
+
+def explore_folder(folder_moid, si, vcenter_uuid, datacenter_name):
+    """
+    Recursively explores subfolders of a given folder by its MoID.
+    """
+    folder_identifiers = []
+
+    # Retrieve the folder object via its MoID
+    content = si.RetrieveContent()
+    folder = next((item for item in content.viewManager.CreateContainerView(
+        content.rootFolder, [vim.Folder], True).view if item._moId == folder_moid), None)
+
+    if folder and hasattr(folder, 'childEntity'):
+        for child in folder.childEntity:
+            if isinstance(child, vim.Folder):
+                # Construct FolderIdentifier
+                child_moid = child._moId.split('-')[-1]
+                folder_identifier = f"{vcenter_uuid}.group-v{child_moid}"
+
+                folder_identifiers.append({
+                    "Datacenter": datacenter_name,
+                    "Name": child.name,
+                    "Identifier": folder_identifier
+                })
+
+                # Recursively explore subfolders
+                folder_identifiers += explore_folder(child._moId, si, vcenter_uuid, datacenter_name)
+
+    return folder_identifiers
+
+def find_folder_by_moid(moid):
+    """
+    Finds a folder object by its Managed Object ID (MoID) using the vSphere API.
+    """
+    # Implement folder lookup by MoID here if necessary.
+    # This might involve iterating through folders in the environment.
+    pass
 
 def get_vm_scsi_identifiers(si, vm_name):
     content = si.RetrieveContent()
@@ -172,7 +289,6 @@ def get_vm_scsi_identifiers(si, vm_name):
                         scsi_devices.append(scsi_info)
             return scsi_devices
     return []
-
 
 # List all volumes (disks) attached to a specific VM
 def list_volumes(si, vm_name):
@@ -201,7 +317,6 @@ def list_volumes(si, vm_name):
         print(f"No volumes found for VM '{vm_name}'")
     return volumes
 
-
 # Function to get the correct host system UUID
 def list_host_system_uuid(si):
     content = si.RetrieveContent()
@@ -224,14 +339,5 @@ def list_host_system_uuid(si):
             })
     
     return host_uuids
-
-# Function to get the vCenter server's instance UUID
-def get_vcenter_server_uuid(si):
-    content = si.RetrieveContent()
-
-    # The vCenter instance UUID is part of the 'about' information
-    vcenter_uuid = content.about.instanceUuid  # This should be the system-wide UUID you're looking for
-    return vcenter_uuid
-
 
 # Additional methods for specific objects (e.g., volumes, clusters) can be added as needed
