@@ -1,0 +1,115 @@
+{
+    "VM_Sizes": {
+      "GeneralPurpose": [
+        {
+          "type": "Standard_B1s",
+          "vCPUs": 1,
+          "RAM_GB": 1,
+          "MaxDataDisks": 2,
+          "TempStorage_GB": 4
+        },
+        {
+          "type": "Standard_B2s",
+          "vCPUs": 2,
+          "RAM_GB": 4,
+          "MaxDataDisks": 4,
+          "TempStorage_GB": 8
+        },
+        {
+          "type": "Standard_D2_v3",
+          "vCPUs": 2,
+          "RAM_GB": 8,
+          "MaxDataDisks": 4,
+          "TempStorage_GB": 50
+        },
+        {
+          "type": "Standard_D4_v3",
+          "vCPUs": 4,
+          "RAM_GB": 16,
+          "MaxDataDisks": 8,
+          "TempStorage_GB": 100
+        }
+      ],
+      "ComputeOptimized": [
+        {
+          "type": "Standard_F2s_v2",
+          "vCPUs": 2,
+          "RAM_GB": 4,
+          "MaxDataDisks": 4,
+          "TempStorage_GB": 16
+        },
+        {
+          "type": "Standard_F4s_v2",
+          "vCPUs": 4,
+          "RAM_GB": 8,
+          "MaxDataDisks": 8,
+          "TempStorage_GB": 32
+        }
+      ],
+      "MemoryOptimized": [
+        {
+          "type": "Standard_E2s_v3",
+          "vCPUs": 2,
+          "RAM_GB": 16,
+          "MaxDataDisks": 4,
+          "TempStorage_GB": 50
+        },
+        {
+          "type": "Standard_E4s_v3",
+          "vCPUs": 4,
+          "RAM_GB": 32,
+          "MaxDataDisks": 8,
+          "TempStorage_GB": 100
+        }
+      ],
+      "StorageOptimized": [
+        {
+          "type": "Standard_L4s",
+          "vCPUs": 4,
+          "RAM_GB": 32,
+          "MaxDataDisks": 8,
+          "TempStorage_GB": 678
+        },
+        {
+          "type": "Standard_L8s",
+          "vCPUs": 8,
+          "RAM_GB": 64,
+          "MaxDataDisks": 16,
+          "TempStorage_GB": 1380
+        }
+      ],
+      "GPUOptimized": [
+        {
+          "type": "Standard_NC6",
+          "vCPUs": 6,
+          "RAM_GB": 56,
+          "MaxDataDisks": 24,
+          "TempStorage_GB": 340
+        },
+        {
+          "type": "Standard_NC12",
+          "vCPUs": 12,
+          "RAM_GB": 112,
+          "MaxDataDisks": 32,
+          "TempStorage_GB": 680
+        }
+      ],
+      "HighPerformanceComputing": [
+        {
+          "type": "Standard_H16r",
+          "vCPUs": 16,
+          "RAM_GB": 112,
+          "MaxDataDisks": 32,
+          "TempStorage_GB": 2000
+        },
+        {
+          "type": "Standard_H16mr",
+          "vCPUs": 16,
+          "RAM_GB": 224,
+          "MaxDataDisks": 32,
+          "TempStorage_GB": 2000
+        }
+      ]
+    }
+  }
+  

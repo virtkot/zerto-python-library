@@ -50,6 +50,7 @@ class ZertoTaskStates(Enum):
             if member.value == value:
                 return member.name
         return None
+    
 class ZertoClient:
     def __init__(self, zvm_address, client_id, client_secret):
         self.zvm_address = zvm_address
@@ -738,6 +739,24 @@ class ZertoClient:
         except requests.exceptions.RequestException as e:
             logging.error(f"Error creating VPG settings: {e}")
             sys.exit(1)
+
+    def delete_vpg_settings(self, vpg_identifier):
+        logging.debug(f'delete_vpg_settings(vpg_identifier={vpg_identifier})')
+        vpg_settings_uri = f"https://{self.zvm_address}/v1/vpgSettings/{vpg_identifier}"
+        headers = {
+            'Content-Type': 'application/json',
+            'Authorization': f'Bearer {self.token}'
+        }
+
+        try:
+            response = requests.delete(vpg_settings_uri, headers=headers, verify=verifyCertificate)
+            response.raise_for_status()
+            logging.info(f"VPGSettings ID: {vpg_identifier} deleted")
+            return
+        except requests.exceptions.RequestException as e:
+            logging.error(f"Error deleting VPG settings: {e}")
+            sys.exit(1)
+
 
     def wait_for_task_completion(self, task_identifier, timeout=600, interval=5, expected_task_state: ZertoTaskStates = ZertoTaskStates.Completed):
         logging.debug(f'wait_for_task_completion(zvm_address={self.zvm_address}, task_identifier={task_identifier}, timeout={timeout}, interval={interval})')
@@ -2235,6 +2254,8 @@ class ZertoClient:
             raise
 
     def get_peer_sites_pairing_statuses(self):
+        logging.debug("get_peer_sites_pairing_statuses()")
+
         """
         Get the list of acceptable values for site pairing statuses.
 
@@ -2281,6 +2302,7 @@ class ZertoClient:
             raise
 
     def generate_peer_site_token(self):
+        logging.debug("generate_peer_site_token()")
         """
         Generate a token for pairing with a peer site.
 

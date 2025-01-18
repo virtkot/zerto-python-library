@@ -67,6 +67,22 @@ def main():
         logging.error(f"Error loading VMs payload: {e}")
         sys.exit(1)
 
+    vpgs = zerto_client.list_vpgs()
+    logging.info(f'vpgs={json.dumps(vpgs, indent=2)}')
+
+    # Initialize CPU count and VM specs map
+    azure_cpu_count = 0
+    azure_vm_specs = json.load(open('azure-vm-type-specs.json'))
+
+    for vpg in vpgs:
+        payload = {
+            "VpgIdentifier": vpg['VpgIdentifier']
+        }
+        vpg_settings_id = zerto_client.create_vpg_settings(payload)
+        logging.info(f'vpg_settings_id={vpg_settings_id}')
+        vpg_settings = zerto_client.list_vpg_settings(vpg_settings_id = vpg_settings_id)
+        logging.info(f'vpg_settings={json.dumps(vpg_settings, indent=2)}')
+
 
     # # Parameters for VRA installation on cluster
     # cluster_identifier = "79e3f102-92c2-4c3a-9783-6367165e8c73.domain-c22"
