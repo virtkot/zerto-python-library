@@ -1,0 +1,245 @@
+[
+  {
+    "VpgIdentifier": "1b976390-4ba2-4d05-8408-5b4c33d6377f",
+    "VpgSettingsIdentifier": "2891b744-363f-47b5-98fe-4c4ed38ce99b",
+    "Basic": {
+      "Name": "test",
+      "VpgType": "Remote",
+      "RpoInSeconds": 300,
+      "TestIntervalInMinutes": 262080,
+      "JournalHistoryInHours": 1,
+      "Priority": "Medium",
+      "UseWanCompression": true,
+      "ServiceProfileIdentifier": null,
+      "ZorgIdentifier": null,
+      "ProtectedSiteIdentifier": "41b3c66c-bb9a-42af-b715-00c5f387893b",
+      "RecoverySiteIdentifier": "914c57cb-3508-463a-9014-dadecd37ebb8"
+    },
+    "Scripting": {
+      "PreRecovery": {
+        "Command": null,
+        "Parameters": null,
+        "TimeoutInSeconds": 300
+      },
+      "PostRecovery": {
+        "Command": null,
+        "Parameters": null,
+        "TimeoutInSeconds": 300
+      },
+      "PostBackup": null
+    },
+    "BootGroups": {
+      "BootGroups": [
+        {
+          "BootGroupIdentifier": "00000000-0000-0000-0000-000000000000",
+          "Name": "Default",
+          "BootDelayInSeconds": 0
+        }
+      ]
+    },
+    "Journal": {
+      "Limitation": {
+        "HardLimitInMB": 153600,
+        "HardLimitInPercent": 0,
+        "WarningThresholdInMB": 115200,
+        "WarningThresholdInPercent": 0
+      },
+      "DatastoreIdentifier": "03cb5a97-4d85-4449-99ef-3a268bf3f60d.datastore-3014",
+      "DatastoreClusterIdentifier": null
+    },
+    "Scratch": {
+      "Limitation": {
+        "HardLimitInMB": 307200,
+        "HardLimitInPercent": 0,
+        "WarningThresholdInMB": 230400,
+        "WarningThresholdInPercent": 0
+      },
+      "DatastoreIdentifier": null,
+      "DatastoreClusterIdentifier": null
+    },
+    "LongTermRetention": null,
+    "Recovery": {
+      "DefaultHostIdentifier": "03cb5a97-4d85-4449-99ef-3a268bf3f60d.host-3009",
+      "DefaultHostClusterIdentifier": null,
+      "DefaultDatastoreIdentifier": "03cb5a97-4d85-4449-99ef-3a268bf3f60d.datastore-3014",
+      "DefaultDatastoreClusterIdentifier": null,
+      "DefaultFolderIdentifier": "03cb5a97-4d85-4449-99ef-3a268bf3f60d.group-v4",
+      "ResourcePoolIdentifier": null,
+      "VCD": null,
+      "PublicCloud": null
+    },
+    "Networks": {
+      "Failover": {
+        "VCD": null,
+        "Hypervisor": {
+          "DefaultNetworkIdentifier": "03cb5a97-4d85-4449-99ef-3a268bf3f60d.network-3015"
+        },
+        "PublicCloud": null
+      },
+      "FailoverTest": {
+        "VCD": null,
+        "Hypervisor": {
+          "DefaultNetworkIdentifier": "03cb5a97-4d85-4449-99ef-3a268bf3f60d.network-3016"
+        },
+        "PublicCloud": null
+      }
+    },
+    "Vms": [
+      {
+        "VmIdentifier": "b13df028-21ad-493c-ad48-1e6953296a4b.vm-6020",
+        "Recovery": {
+          "HostIdentifier": "03cb5a97-4d85-4449-99ef-3a268bf3f60d.host-3009",
+          "HostClusterIdentifier": null,
+          "DatastoreIdentifier": "03cb5a97-4d85-4449-99ef-3a268bf3f60d.datastore-3014",
+          "DatastoreClusterIdentifier": null,
+          "FolderIdentifier": "03cb5a97-4d85-4449-99ef-3a268bf3f60d.group-v4",
+          "ResourcePoolIdentifier": null,
+          "VCD": null,
+          "PublicCloud": null
+        },
+        "BootGroupIdentifier": "00000000-0000-0000-0000-000000000000",
+        "Journal": {
+          "Limitation": {
+            "HardLimitInMB": 153600,
+            "HardLimitInPercent": 0,
+            "WarningThresholdInMB": 115200,
+            "WarningThresholdInPercent": 0
+          },
+          "DatastoreIdentifier": "03cb5a97-4d85-4449-99ef-3a268bf3f60d.datastore-3014",
+          "DatastoreClusterIdentifier": null
+        },
+        "Scratch": {
+          "Limitation": {
+            "HardLimitInMB": 307200,
+            "HardLimitInPercent": 0,
+            "WarningThresholdInMB": 230400,
+            "WarningThresholdInPercent": 0
+          },
+          "DatastoreIdentifier": "03cb5a97-4d85-4449-99ef-3a268bf3f60d.datastore-3014",
+          "DatastoreClusterIdentifier": null
+        },
+        "Volumes": [
+          {
+            "VolumeIdentifier": "scsi:0:0",
+            "VCD": null,
+            "Preseed": null,
+            "RDM": null,
+            "Datastore": {
+              "DatastoreClusterIdentifier": null,
+              "DatastoreIdentifier": "03cb5a97-4d85-4449-99ef-3a268bf3f60d.datastore-3014",
+              "IsThin": true
+            },
+            "IsSwap": null,
+            "VolumeSyncSettings": "ContinuousSync"
+          }
+        ],
+        "Nics": [
+          {
+            "NicIdentifier": "Network adapter 1",
+            "FailoverTest": {
+              "Hypervisor": {
+                "NetworkIdentifier": "03cb5a97-4d85-4449-99ef-3a268bf3f60d.network-3016",
+                "ShouldReplaceMacAddress": false,
+                "DnsSuffix": null,
+                "IpConfig": null,
+                "ShouldReplaceIpConfiguration": false
+              },
+              "VCD": null,
+              "PublicCloud": null
+            },
+            "Failover": {
+              "Hypervisor": {
+                "NetworkIdentifier": "03cb5a97-4d85-4449-99ef-3a268bf3f60d.network-3015",
+                "ShouldReplaceMacAddress": false,
+                "DnsSuffix": null,
+                "IpConfig": null,
+                "ShouldReplaceIpConfiguration": false
+              },
+              "VCD": null,
+              "PublicCloud": null
+            }
+          }
+        ]
+      },
+      {
+        "VmIdentifier": "b13df028-21ad-493c-ad48-1e6953296a4b.vm-9008",
+        "Recovery": {
+          "HostIdentifier": "03cb5a97-4d85-4449-99ef-3a268bf3f60d.host-3009",
+          "HostClusterIdentifier": null,
+          "DatastoreIdentifier": "03cb5a97-4d85-4449-99ef-3a268bf3f60d.datastore-3014",
+          "DatastoreClusterIdentifier": null,
+          "FolderIdentifier": "03cb5a97-4d85-4449-99ef-3a268bf3f60d.group-v7013",
+          "ResourcePoolIdentifier": null,
+          "VCD": null,
+          "PublicCloud": null
+        },
+        "BootGroupIdentifier": "00000000-0000-0000-0000-000000000000",
+        "Journal": {
+          "Limitation": {
+            "HardLimitInMB": 153600,
+            "HardLimitInPercent": 0,
+            "WarningThresholdInMB": 115200,
+            "WarningThresholdInPercent": 0
+          },
+          "DatastoreIdentifier": "03cb5a97-4d85-4449-99ef-3a268bf3f60d.datastore-3014",
+          "DatastoreClusterIdentifier": null
+        },
+        "Scratch": {
+          "Limitation": {
+            "HardLimitInMB": 307200,
+            "HardLimitInPercent": 0,
+            "WarningThresholdInMB": 230400,
+            "WarningThresholdInPercent": 0
+          },
+          "DatastoreIdentifier": "03cb5a97-4d85-4449-99ef-3a268bf3f60d.datastore-3014",
+          "DatastoreClusterIdentifier": null
+        },
+        "Volumes": [
+          {
+            "VolumeIdentifier": "scsi:0:0",
+            "VCD": null,
+            "Preseed": null,
+            "RDM": null,
+            "Datastore": {
+              "DatastoreClusterIdentifier": null,
+              "DatastoreIdentifier": "03cb5a97-4d85-4449-99ef-3a268bf3f60d.datastore-3014",
+              "IsThin": true
+            },
+            "IsSwap": null,
+            "VolumeSyncSettings": "ContinuousSync"
+          }
+        ],
+        "Nics": [
+          {
+            "NicIdentifier": "Network adapter 1",
+            "FailoverTest": {
+              "Hypervisor": {
+                "NetworkIdentifier": "03cb5a97-4d85-4449-99ef-3a268bf3f60d.network-3016",
+                "ShouldReplaceMacAddress": false,
+                "DnsSuffix": null,
+                "IpConfig": null,
+                "ShouldReplaceIpConfiguration": false
+              },
+              "VCD": null,
+              "PublicCloud": null
+            },
+            "Failover": {
+              "Hypervisor": {
+                "NetworkIdentifier": "03cb5a97-4d85-4449-99ef-3a268bf3f60d.network-3015",
+                "ShouldReplaceMacAddress": false,
+                "DnsSuffix": null,
+                "IpConfig": null,
+                "ShouldReplaceIpConfiguration": false
+              },
+              "VCD": null,
+              "PublicCloud": null
+            }
+          }
+        ]
+      }
+    ],
+    "Protected": {
+      "VCD": null
+    }
+  }
+]

@@ -10,6 +10,39 @@ from vcenter import connect_to_vcenter, \
 # Disable SSL warnings
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
+def setup_clients(args):
+    """
+    Initialize and return Zerto clients and their local site identifiers for both sites
+    
+    Args:
+        args: Parsed command line arguments
+        
+    Returns:
+        tuple: (client1, client2, local_site1_id, local_site2_id)
+    """
+    # Create clients for both sites
+    client1 = ZVMAClient(
+        zvm_address=args.site1_address,
+        client_id=args.site1_client_id,
+        client_secret=args.site1_client_secret,
+        verify_certificate=not args.ignore_ssl
+    )
+    client2 = ZVMAClient(
+        zvm_address=args.site2_address,
+        client_id=args.site2_client_id,
+        client_secret=args.site2_client_secret,
+        verify_certificate=not args.ignore_ssl
+    )
+    
+    # Get local site ids
+    local_site1_identifier = client1.localsite.get_local_site().get('SiteIdentifier')
+    logging.info(f"Site 1 Local Site ID: {local_site1_identifier}")
+
+    local_site2_identifier = client2.localsite.get_local_site().get('SiteIdentifier')
+    logging.info(f"Site 2 Local Site ID: {local_site2_identifier}")
+    
+    return client1, client2, local_site1_identifier, local_site2_identifier
+
 def main():
     parser = argparse.ArgumentParser(description="ZVMA Client")
     parser.add_argument("--site1_address", required=True, help="Site 1 ZVM address")
@@ -30,18 +63,9 @@ def main():
     logging.basicConfig(level=logging.DEBUG)
 
     try:
-        # Create clients for both sites
-        client1 = ZVMAClient(zvm_address=args.site1_address, client_id=args.site1_client_id, client_secret=args.site1_client_secret, verify_certificate=not args.ignore_ssl)
-        client2 = ZVMAClient(zvm_address=args.site2_address, client_id=args.site2_client_id, client_secret=args.site2_client_secret, verify_certificate=not args.ignore_ssl)
+        # Setup clients and get site identifiers
+        client1, client2, local_site1_identifier, local_site2_identifier = setup_clients(args)
         
-        # Get local site id for site 1
-        local_site1_identifier = client1.localsite.get_local_site().get('SiteIdentifier')
-        logging.info(f"Site 1 Local Site ID: {local_site1_identifier}")
-
-        # Get local site id for site 2
-        local_site2_identifier = client2.localsite.get_local_site().get('SiteIdentifier')
-        logging.info(f"Site 2 Local Site ID: {local_site2_identifier}")
-
         # Fill basic VPG settings info
         vpg_name = 'VpgTest'
         basic = {
@@ -145,9 +169,7 @@ def main():
                                          recovery=recovery, networks=networks, sync=True)
         logging.info(f"VPG ID: {vpg_id} created successfully.")
 
-        #add vms to the VPG
-        
-        #list available vms from site1
+        # Add VMs to the first VPG
         vms = list_vms_with_details(si1)
         vms_to_add = ["RHEL6", "Microsoft 2022"]
         vm_list = []
@@ -172,18 +194,59 @@ def main():
                 task_id = client1.vpgs.add_vm_to_vpg(vpg_name, vm_list_payload=vm_payload)
                 logging.info(f"Task ID: {task_id} to add VM {vm.get('Name')} to VPG.")
 
+        input("Press Enter to remove Microsoft 2022 VM from the first VPG...")
 
-        # wait for user input to continue
-        input("Press Enter to continue...")
+        # Remove Microsoft 2022 VM from the first VPG
+        vm_to_remove = "Microsoft 2022"
+        vm_identifier_to_remove = None
+        for vm in vms:
+            if vm.get('Name') == vm_to_remove:
+                vm_identifier_to_remove = vm.get('VMIdentifier')
+                task_id = client1.vpgs.remove_vm_from_vpg(vpg_name, vm_identifier_to_remove)
+                logging.info(f"Task ID: {task_id} to remove VM {vm_to_remove} from VPG {vpg_name}")
+                break
 
-        # delete VPG
-        task_id = client1.vpgs.delete_vpg(vpg_name, keep_recovery_volumes=False)
-        logging.info(f"Task ID: {task_id} to delete VPG.")
+        input("Press Enter to create second VPG...")
 
+        # Create second VPG
+        vpg_name_2 = 'VpgTest2'
+        basic['Name'] = vpg_name_2  # Update VPG name for second VPG
+        
+        vpg_id_2 = client1.vpgs.create_vpg(basic=basic, journal=journal, 
+                                          recovery=recovery, networks=networks, sync=True)
+        logging.info(f"Second VPG ID: {vpg_id_2} created successfully.")
+
+        # Add the removed VM to the second VPG
+        if vm_identifier_to_remove:
+            vm_payload = {
+                "VmIdentifier": vm_identifier_to_remove,
+                "Recovery": {
+                    "HostIdentifier": site2_host_identifier,
+                    "HostClusterIdentifier": None,
+                    "DatastoreIdentifier":site2_datastore_identifier,
+                    "DatastoreClusterIdentifier": None,
+                    "FolderIdentifier": site2_folder_identifier,
+                    "ResourcePoolIdentifier": None,
+                    "VCD": None,
+                    "PublicCloud": None
+                }
+            }
+            task_id = client1.vpgs.add_vm_to_vpg(vpg_name_2, vm_list_payload=vm_payload)
+            logging.info(f"Task ID: {task_id} to add VM {vm_to_remove} to VPG {vpg_name_2}")
 
     except Exception as e:
         logging.exception("Error:")
         logging.error(f"Error: {e}")
+
+
+    # wait for user input to continue
+    input("Press Enter to delete the VPGs...")
+
+    # Delete the VPGs
+    client1.vpgs.delete_vpg(vpg_name, force=True, keep_recovery_volumes=False)
+    logging.info(f"VPG {vpg_name} deleted successfully.")   
+    client1.vpgs.delete_vpg(vpg_name_2, force=True, keep_recovery_volumes=False)
+    logging.info(f"VPG {vpg_name_2} deleted successfully.")
 
 if __name__ == "__main__":
     main()

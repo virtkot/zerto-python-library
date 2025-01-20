@@ -6,9 +6,44 @@ from zvma import ZVMAClient
 from vcenter import connect_to_vcenter, \
     list_resource_pools, list_networks, list_vms_with_details, \
     list_folders, list_datacenter_children
+import time
+from zvma.common import ZertoVPGStatus, ZertoVPGSubstatus
 
 # Disable SSL warnings
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
+def setup_clients(args):
+    """
+    Initialize and return Zerto clients and their local site identifiers for both sites
+    
+    Args:
+        args: Parsed command line arguments
+        
+    Returns:
+        tuple: (client1, client2, local_site1_id, local_site2_id)
+    """
+    # Create clients for both sites
+    client1 = ZVMAClient(
+        zvm_address=args.site1_address,
+        client_id=args.site1_client_id,
+        client_secret=args.site1_client_secret,
+        verify_certificate=not args.ignore_ssl
+    )
+    client2 = ZVMAClient(
+        zvm_address=args.site2_address,
+        client_id=args.site2_client_id,
+        client_secret=args.site2_client_secret,
+        verify_certificate=not args.ignore_ssl
+    )
+    
+    # Get local site ids
+    local_site1_identifier = client1.localsite.get_local_site().get('SiteIdentifier')
+    logging.info(f"Site 1 Local Site ID: {local_site1_identifier}")
+
+    local_site2_identifier = client2.localsite.get_local_site().get('SiteIdentifier')
+    logging.info(f"Site 2 Local Site ID: {local_site2_identifier}")
+    
+    return client1, client2, local_site1_identifier, local_site2_identifier
 
 def main():
     parser = argparse.ArgumentParser(description="ZVMA Client")
@@ -30,20 +65,11 @@ def main():
     logging.basicConfig(level=logging.DEBUG)
 
     try:
-        # Create clients for both sites
-        client1 = ZVMAClient(zvm_address=args.site1_address, client_id=args.site1_client_id, client_secret=args.site1_client_secret, verify_certificate=not args.ignore_ssl)
-        client2 = ZVMAClient(zvm_address=args.site2_address, client_id=args.site2_client_id, client_secret=args.site2_client_secret, verify_certificate=not args.ignore_ssl)
+        # Setup clients and get site identifiers
+        client1, client2, local_site1_identifier, local_site2_identifier = setup_clients(args)
         
-        # Get local site id for site 1
-        local_site1_identifier = client1.localsite.get_local_site().get('SiteIdentifier')
-        logging.info(f"Site 1 Local Site ID: {local_site1_identifier}")
-
-        # Get local site id for site 2
-        local_site2_identifier = client2.localsite.get_local_site().get('SiteIdentifier')
-        logging.info(f"Site 2 Local Site ID: {local_site2_identifier}")
-
         # Fill basic VPG settings info
-        vpg_name = 'VpgTest'
+        vpg_name = 'VpgTest1'
         basic = {
             "Name": vpg_name,
             "VpgType": "Remote",
@@ -141,26 +167,24 @@ def main():
                 }
             }
         }
+
+        # Create first VPG and add RHEL6 VM
         vpg_id = client1.vpgs.create_vpg(basic=basic, journal=journal, 
-                                         recovery=recovery, networks=networks, sync=True)
+                                       recovery=recovery, networks=networks, sync=True)
         logging.info(f"VPG ID: {vpg_id} created successfully.")
 
-        #add vms to the VPG
-        
-        #list available vms from site1
+        # Add RHEL6 VM to VPG1
         vms = list_vms_with_details(si1)
-        vms_to_add = ["RHEL6", "Microsoft 2022"]
-        vm_list = []
+        vm_to_add = "RHEL6"
         for vm in vms:
-            logging.info(f"VM: Name={vm.get('Name')}, VM Identifier={vm.get('VMIdentifier')}")
-            if vm.get('Name') in vms_to_add:
-                logging.info(f"Adding VM {vm.get('Name')} to VPG...")
+            if vm.get('Name') == vm_to_add:
+                logging.info(f"Adding VM {vm.get('Name')} to VPG1...")
                 vm_payload = {
                     "VmIdentifier": vm.get('VMIdentifier'),
                     "Recovery": {
                         "HostIdentifier": site2_host_identifier,
                         "HostClusterIdentifier": None,
-                        "DatastoreIdentifier":site2_datastore_identifier,
+                        "DatastoreIdentifier": site2_datastore_identifier,
                         "DatastoreClusterIdentifier": None,
                         "FolderIdentifier": site2_folder_identifier,
                         "ResourcePoolIdentifier": None,
@@ -168,18 +192,81 @@ def main():
                         "PublicCloud": None
                     }
                 }
-                vm_list.append(vm_payload)
                 task_id = client1.vpgs.add_vm_to_vpg(vpg_name, vm_list_payload=vm_payload)
-                logging.info(f"Task ID: {task_id} to add VM {vm.get('Name')} to VPG.")
+                logging.info(f"Task ID: {task_id} to add VM {vm.get('Name')} to VPG1.")
+                break
 
+        # Create second VPG and add Microsoft 2022 VM
+        vpg_name_2 = 'VpgTest2'
+        basic['Name'] = vpg_name_2
+        vpg_id_2 = client1.vpgs.create_vpg(basic=basic, journal=journal, 
+                                          recovery=recovery, networks=networks, sync=True)
+        logging.info(f"VPG ID: {vpg_id_2} created successfully.")
 
-        # wait for user input to continue
-        input("Press Enter to continue...")
+        # Add Microsoft 2022 VM to VPG2
+        vm_to_add = "Microsoft 2022"
+        for vm in vms:
+            if vm.get('Name') == vm_to_add:
+                logging.info(f"Adding VM {vm.get('Name')} to VPG2...")
+                vm_payload = {
+                    "VmIdentifier": vm.get('VMIdentifier'),
+                    "Recovery": {
+                        "HostIdentifier": site2_host_identifier,
+                        "HostClusterIdentifier": None,
+                        "DatastoreIdentifier": site2_datastore_identifier,
+                        "DatastoreClusterIdentifier": None,
+                        "FolderIdentifier": site2_folder_identifier,
+                        "ResourcePoolIdentifier": None,
+                        "VCD": None,
+                        "PublicCloud": None
+                    }
+                }
+                task_id = client1.vpgs.add_vm_to_vpg(vpg_name_2, vm_list_payload=vm_payload)
+                logging.info(f"Task ID: {task_id} to add VM {vm.get('Name')} to VPG2.")
+                break
 
-        # delete VPG
-        task_id = client1.vpgs.delete_vpg(vpg_name, keep_recovery_volumes=False)
-        logging.info(f"Task ID: {task_id} to delete VPG.")
+        # Wait for both VPGs to reach MeetingSLA status
+        logging.info("Waiting for VPGs to reach MeetingSLA status...")
+        for vpg_name_to_check in [vpg_name, vpg_name_2]:
+            while True:
+                vpg_info = client1.vpgs.list_vpgs(vpg_name=vpg_name_to_check)
+                status = vpg_info.get('Status')
+                substatus = vpg_info.get('SubStatus')
+                logging.info(f"VPG {vpg_name_to_check} - Status: {ZertoVPGStatus.get_name_by_value(status)}, SubStatus: {ZertoVPGSubstatus.get_name_by_value(substatus) }")
+                
+                if status == ZertoVPGStatus.MeetingSLA.value:
+                    logging.info(f"VPG {vpg_name_to_check} is now meeting SLA")
+                    break
 
+                logging.info(f"Waiting for VPG {vpg_name_to_check} to reach MeetingSLA status...")
+                time.sleep(30)  # Wait 30 seconds before checking again
+
+        input("Press Enter to start failover test for both VPGs...")
+
+        # Start failover test for both VPGs
+        task_id = client1.vpgs.failover_test(vpg_name)
+        logging.info(f"Failover test started for VPG {vpg_name}, task ID: {task_id}")
+        
+        task_id = client1.vpgs.failover_test(vpg_name_2)
+        logging.info(f"Failover test started for VPG {vpg_name_2}, task ID: {task_id}")
+
+        input("Press Enter to stop failover test and rollback both VPGs...")
+
+        # Stop failover test and rollback both VPGs
+        task_id = client1.vpgs.rollback_failover(vpg_name)
+        logging.info(f"Failover rollback initiated for VPG {vpg_name}, task ID: {task_id}")
+        
+        task_id = client1.vpgs.rollback_failover(vpg_name_2)
+        logging.info(f"Failover rollback initiated for VPG {vpg_name_2}, task ID: {task_id}")
+
+        input("Press Enter to delete both VPGs...")
+
+        # Delete both VPGs
+        client1.vpgs.delete_vpg(vpg_name, force=True, keep_recovery_volumes=False)
+        logging.info(f"VPG {vpg_name} deleted successfully.")
+        
+        client1.vpgs.delete_vpg(vpg_name_2, force=True, keep_recovery_volumes=False)
+        logging.info(f"VPG {vpg_name_2} deleted successfully.")
 
     except Exception as e:
         logging.exception("Error:")

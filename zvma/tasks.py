@@ -1,34 +1,8 @@
 import requests
 import logging
 import time
-from enum import Enum
+from .common import ZertoTaskStates
 
-class ZertoTaskStates(Enum):
-    FirstUnusedValue = 0
-    InProgress = 1
-    WaitingForUserInput = 2
-    Paused = 3
-    Failed = 4
-    Stopped = 5
-    Completed = 6
-    Cancelling = 7
-    @classmethod
-    def get_name_by_value(cls, value):
-        """
-        Get the name of the enum member given its value.
-
-        Args:
-            value (int): The value of the enum member.
-
-        Returns:
-            str: The name of the enum member.
-            None: If the value does not match any enum member.
-        """
-        for member in cls:
-            if member.value == value:
-                return member.name
-        return None
-    
 class Tasks:
     def __init__(self, client):
         self.client = client
