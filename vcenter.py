@@ -2,6 +2,7 @@ import ssl
 import atexit
 from pyVim.connect import SmartConnect, Disconnect
 from pyVmomi import vim
+from pyVim.task import WaitForTask
 import logging
 
 # Disable SSL verification for vCenter connections (if needed)
@@ -341,3 +342,95 @@ def list_host_system_uuid(si):
     return host_uuids
 
 # Additional methods for specific objects (e.g., volumes, clusters) can be added as needed
+
+def power_off_vm(vcenter_connection, vm_identifier=None, vm_name=None):
+    """
+    Power off a VM using its identifier or name.
+    
+    Args:
+        vcenter_connection: The vCenter connection object
+        vm_identifier: The VM's identifier/moref (optional)
+        vm_name: The VM's name (optional)
+    """
+    logging.info(f"Attempting to power off VM with identifier: {vm_identifier} or name: {vm_name}")
+    try:
+        # Get all VMs and print their details for debugging
+        container = vcenter_connection.content.viewManager.CreateContainerView(
+            vcenter_connection.content.rootFolder, [vim.VirtualMachine], True
+        )
+        all_vms = container.view
+        logging.info("Available VMs in vCenter:")
+        # for vm in all_vms:
+        #     logging.info(f"VM Name: {vm.name}, MoRef ID: {vm._moId}")
+
+        # Find VM by identifier or name
+        if vm_identifier:
+            # Parse the moRef ID from the identifier (e.g., "uuid.vm-9008" -> "vm-9008")
+            mo_ref = vim.VirtualMachine(vm_identifier.split('.')[-1])
+            mo_ref._moId = vm_identifier.split('.')[-1]
+            vm = next((v for v in all_vms if v._moId == mo_ref._moId), None)
+        elif vm_name:
+            vm = next((v for v in all_vms if v.name == vm_name), None)
+        else:
+            raise ValueError("Either vm_identifier or vm_name must be provided")
+        
+        if vm is None:
+            raise Exception(f"VM with identifier {vm_identifier} or name {vm_name} not found")
+            
+        if vm.runtime.powerState == 'poweredOn':
+            logging.info(f"Powering off VM {vm.name}")
+            task = vm.PowerOffVM_Task()
+            WaitForTask(task)
+            logging.info(f"Successfully powered off VM {vm.name}")
+        else:
+            logging.info(f"VM {vm.name} is already powered off")
+            
+    except Exception as e:
+        logging.error(f"Failed to power off VM: {e}")
+        raise
+
+def power_on_vm(vcenter_connection, vm_identifier=None, vm_name=None):
+    """
+    Power on a VM using its identifier or name.
+    
+    Args:
+        vcenter_connection: The vCenter connection object
+        vm_identifier: The VM's identifier/moref (optional)
+        vm_name: The VM's name (optional)
+    """
+    logging.info(f"Attempting to power on VM with identifier: {vm_identifier} or name: {vm_name}")
+    try:
+        # Get all VMs and print their details for debugging
+        container = vcenter_connection.content.viewManager.CreateContainerView(
+            vcenter_connection.content.rootFolder, [vim.VirtualMachine], True
+        )
+        all_vms = container.view
+        logging.info("Available VMs in vCenter:")
+        # for vm in all_vms:
+        #     logging.info(f"VM Name: {vm.name}, MoRef ID: {vm._moId}")
+
+        # Find VM by identifier or name
+        if vm_identifier:
+            # Parse the moRef ID from the identifier (e.g., "uuid.vm-9008" -> "vm-9008")
+            mo_ref = vim.VirtualMachine(vm_identifier.split('.')[-1])
+            mo_ref._moId = vm_identifier.split('.')[-1]
+            vm = next((v for v in all_vms if v._moId == mo_ref._moId), None)
+        elif vm_name:
+            vm = next((v for v in all_vms if v.name == vm_name), None)
+        else:
+            raise ValueError("Either vm_identifier or vm_name must be provided")
+        
+        if vm is None:
+            raise Exception(f"VM with identifier {vm_identifier} or name {vm_name} not found")
+            
+        if vm.runtime.powerState == 'poweredOff':
+            logging.info(f"Powering on VM {vm.name}")
+            task = vm.PowerOnVM_Task()
+            WaitForTask(task)
+            logging.info(f"Successfully powered on VM {vm.name}")
+        else:
+            logging.info(f"VM {vm.name} is already powered on")
+            
+    except Exception as e:
+        logging.error(f"Failed to power on VM: {e}")
+        raise
