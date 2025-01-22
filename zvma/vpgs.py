@@ -202,7 +202,7 @@ class VPGs:
             logging.error(f"Unexpected error while generating peer site pairing token: {e}")
             raise
 
-    def failover_test(self, vpg_name, checkpoint_identifier=None, vm_name_list=None, sync=None):
+    def failover_test(self, vpg_name, checkpoint_identifier=None, vm_name_list=None, sync=True):
         """
         Initiate a failover test for a given VPG by its name.
 
@@ -250,7 +250,7 @@ class VPGs:
 
             if sync:
                 # Wait for task completion
-                self.wait_for_task_completion(task_id, timeout=30, interval=5)
+                self.tasks.wait_for_task_completion(task_id, timeout=30, interval=5)
             return response.json()
 
         except requests.exceptions.RequestException as e:
@@ -269,7 +269,7 @@ class VPGs:
             logging.error(f"Unexpected error while generating peer site pairing token: {e}")
             raise
 
-    def stop_failover_test(self, vpg_name, sync=None):
+    def stop_failover_test(self, vpg_name, sync=True):
         """
         Stop a failover test for a given VPG by its name.
 
@@ -300,7 +300,7 @@ class VPGs:
 
             if sync:
                 # Wait for task completion
-                self.wait_for_task_completion(task_id, timeout=30, interval=5)
+                self.tasks.wait_for_task_completion(task_id, timeout=30, interval=5)
             return response.json()
 
         except requests.exceptions.RequestException as e:
@@ -350,7 +350,7 @@ class VPGs:
 
             if sync:
                 # Wait for task completion
-                self.wait_for_task_completion(task_id, timeout=30, interval=5)
+                self.tasks.wait_for_task_completion(task_id, timeout=30, interval=5)
             return response.json()
 
         except requests.exceptions.RequestException as e:

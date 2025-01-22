@@ -101,6 +101,7 @@ class ZertoClient:
         
         return timestamp
 
+    # done 
     def commit_vpg(self, vpg_settings_id, vpg_name, sync=False, expected_status=0):
         logging.debug(f'commit_vpg(zvm_address={self.zvm_address}, vpg_settings_id={vpg_settings_id}, vpg_name={vpg_name}, sync={sync})')
         commit_uri = f"https://{self.zvm_address}/v1/vpgSettings/{vpg_settings_id}/commit"
@@ -124,6 +125,7 @@ class ZertoClient:
         except requests.exceptions.RequestException as e:
             logging.error(f"Error committing VPGSettings: {e}")
             sys.exit(1)
+
 
     def list_vpg_settings(self, vpg_settings_id=None):
         logging.debug(f'list_vpg_settings(zvm_address={self.zvm_address}, vpg_settings_id={vpg_settings_id})')
@@ -170,6 +172,7 @@ class ZertoClient:
 
 ###########################    VPGS Virtual Protection Groups    #######################
 #      Manage VPGs and performs Recovery operations
+    # done
     def list_vpgs(self, vpg_name=None):
         logging.debug(f'list_vpgs(zvm_address={self.zvm_address},vpg_name={vpg_name})')
         vpgs_uri = f"https://{self.zvm_address}/v1/vpgs"
@@ -212,12 +215,14 @@ class ZertoClient:
         #     logging.error(f"Error fetching VPGs: {e}")
         #     sys.exit(1)
 
+    # done
     def create_vpg(self, payload, sync):
         vpg_name = payload.get("Basic", {}).get("Name")
         logging.debug(f'create_vpg(zvm_address={self.zvm_address}, vpg_name={vpg_name})')
         vpg_settings_id = self.create_vpg_settings(payload)
         self.commit_vpg(vpg_settings_id, vpg_name, sync, expected_status=2)
 
+    # done
     def wait_for_vpg_ready(self, vpg_name, timeout=180, interval=5, expected_status=0):
         logging.debug(f'wait_for_vpg_ready(zvm_address={self.zvm_address}, vpg_name={vpg_name}, timeout={timeout}, interval={interval})')
         start_time = time.time()
@@ -274,6 +279,7 @@ class ZertoClient:
             logging.error(f"Error adding VMs to VPG: {e}")
             sys.exit(1)
 
+    # done
     def remove_vm_from_vpg(self, vpg_name, vm_identifier):
         logging.debug(f'remove_vm_from_vpg(zvm_address={self.zvm_address}, vpg_name={vpg_name}, vm_identifier={vm_identifier})')
         vpg = self.list_vpgs(vpg_name=vpg_name)
@@ -308,6 +314,7 @@ class ZertoClient:
             logging.error(f"Error removing VM from VPG: {e}")
             sys.exit(1)
 
+    # done
     def delete_vpg(self, vpg_name, force=False, keep_recovery_volumes=True):
         """
         Deletes a VPG by its name.
@@ -355,6 +362,7 @@ class ZertoClient:
             logging.error(f"Error deleting VPG '{vpg_name}': {e}")
             return f"Failed to delete VPG '{vpg_name}'."
 
+    # done
     def failover_test(self, vpg_name, checkpoint_identifier=None, vm_name_list=None, sync=None):
         """
         Initiate a failover test for a given VPG by its name.
@@ -410,6 +418,7 @@ class ZertoClient:
             logging.error(f"Error initiating failover test for VPG '{vpg_name}': {e}")
             sys.exit(1)
 
+    # done
     def stop_failover_test(self, vpg_name, sync=None):
         """
         Stop a failover test for a given VPG by its name.
@@ -448,6 +457,7 @@ class ZertoClient:
             logging.error(f"Error stopping failover test for VPG '{vpg_name}': {e}")
             sys.exit(1)
 
+    # done
     def rollback_failover(self, vpg_name, sync=None):
         """
         Rollback failover for a given VPG by its name.
@@ -486,6 +496,7 @@ class ZertoClient:
             logging.error(f"Error stopping failover test for VPG '{vpg_name}': {e}")
             sys.exit(1)
 
+    # done
     def commit_failover(self, vpg_name, is_reverse_protection=False, sync=None):
         """
         Commit failover for a given VPG by its name.
@@ -528,6 +539,7 @@ class ZertoClient:
             logging.error(f"Error stopping failover test for VPG '{vpg_name}': {e}")
             sys.exit(1)
 
+    # done
     def failover(self, vpg_name, checkpoint_identifier=None, vm_name_list=None, commit_policy=0, time_to_wait_before_shutdown_sec=3600,
                  shutdown_policy=0, is_reverse_protection=False, sync=None):
         """
