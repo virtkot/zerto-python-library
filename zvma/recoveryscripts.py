@@ -27,9 +27,20 @@ class RecoveryScripts:
             response.raise_for_status()
             return response.json()
         except requests.exceptions.RequestException as e:
-            logging.error(f"Failed to get recovery scripts: {e}")
+            if e.response is not None:
+                logging.error(f"HTTPError: {e.response.status_code} - {e.response.reason}")
+                try:
+                    error_details = e.response.json()
+                    logging.error(f"Error Message: {error_details.get('Message', 'No detailed error message available')}")
+                except ValueError:
+                    logging.error(f"Response content: {e.response.text}")
+            else:
+                logging.error("HTTPError occurred with no response attached.")
             raise
 
+        except Exception as e:
+            logging.error(f"Unexpected error: {e}")
+            raise
     def get_recovery_script(self, script_identifier):
         url = f"https://{self.client.zvm_address}/v1/recoveryscripts/{script_identifier}"
         headers = {
@@ -41,9 +52,20 @@ class RecoveryScripts:
             response.raise_for_status()
             return response.json()
         except requests.exceptions.RequestException as e:
-            logging.error(f"Failed to get recovery script: {e}")
+            if e.response is not None:
+                logging.error(f"HTTPError: {e.response.status_code} - {e.response.reason}")
+                try:
+                    error_details = e.response.json()
+                    logging.error(f"Error Message: {error_details.get('Message', 'No detailed error message available')}")
+                except ValueError:
+                    logging.error(f"Response content: {e.response.text}")
+            else:
+                logging.error("HTTPError occurred with no response attached.")
             raise
 
+        except Exception as e:
+            logging.error(f"Unexpected error: {e}")
+            raise
     def get_recovery_script_types(self):
         url = f"https://{self.client.zvm_address}/v1/recoveryscripts/types"
         headers = {
@@ -55,5 +77,17 @@ class RecoveryScripts:
             response.raise_for_status()
             return response.json()
         except requests.exceptions.RequestException as e:
-            logging.error(f"Failed to get recovery script types: {e}")
+            if e.response is not None:
+                logging.error(f"HTTPError: {e.response.status_code} - {e.response.reason}")
+                try:
+                    error_details = e.response.json()
+                    logging.error(f"Error Message: {error_details.get('Message', 'No detailed error message available')}")
+                except ValueError:
+                    logging.error(f"Response content: {e.response.text}")
+            else:
+                logging.error("HTTPError occurred with no response attached.")
+            raise
+
+        except Exception as e:
+            logging.error(f"Unexpected error: {e}")
             raise
