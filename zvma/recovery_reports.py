@@ -79,7 +79,19 @@ class RecoveryReports:
                 response.raise_for_status()
 
         except requests.exceptions.RequestException as e:
-            logging.error(f"Error occurred while fetching recovery reports: {e}")
+            if e.response is not None:
+                logging.error(f"HTTPError: {e.response.status_code} - {e.response.reason}")
+                try:
+                    error_details = e.response.json()
+                    logging.error(f"Error Message: {error_details.get('Message', 'No detailed error message available')}")
+                except ValueError:
+                    logging.error(f"Response content: {e.response.text}")
+            else:
+                logging.error("HTTPError occurred with no response attached.")
+            raise
+
+        except Exception as e:
+            logging.error(f"Unexpected error: {e}")
             raise
 
     def list_resource_reports(self, start_time=None, end_time=None, page_number=None, page_size=None, 
@@ -175,8 +187,20 @@ class RecoveryReports:
             return reports
 
         except requests.exceptions.RequestException as e:
-            logging.error(f"Error fetching resource reports: {e}")
-            return None
+            if e.response is not None:
+                logging.error(f"HTTPError: {e.response.status_code} - {e.response.reason}")
+                try:
+                    error_details = e.response.json()
+                    logging.error(f"Error Message: {error_details.get('Message', 'No detailed error message available')}")
+                except ValueError:
+                    logging.error(f"Response content: {e.response.text}")
+            else:
+                logging.error("HTTPError occurred with no response attached.")
+            raise
+
+        except Exception as e:
+            logging.error(f"Unexpected error: {e}")
+            raise
 
     def get_latest_failover_test_report(self, vpg_name):
         """
@@ -214,6 +238,18 @@ class RecoveryReports:
             
             return None
 
+        except requests.exceptions.RequestException as e:
+            if e.response is not None:
+                logging.error(f"HTTPError: {e.response.status_code} - {e.response.reason}")
+                try:
+                    error_details = e.response.json()
+                    logging.error(f"Error Message: {error_details.get('Message', 'No detailed error message available')}")
+                except ValueError:
+                    logging.error(f"Response content: {e.response.text}")
+            else:
+                logging.error("HTTPError occurred with no response attached.")
+            raise
+
         except Exception as e:
-            logging.error(f"Error getting latest failover test report for VPG {vpg_name}: {e}")
+            logging.error(f"Unexpected error: {e}")
             raise

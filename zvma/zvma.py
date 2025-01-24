@@ -33,8 +33,8 @@ from .events import Events
 from .repositories import Repositories
 from .sessions import Sessions
 from .recoveryscripts import RecoveryScripts
-from .organizations import Organizations
 from .encryptiondetection import EncryptionDetection
+from .zorgs import Zorgs
 from .localsite import LocalSite
 from .datastores import Datastores
 from .vras import VRA
@@ -67,7 +67,7 @@ class ZVMAClient:
         self.repositories = Repositories(self)
         self.sessions = Sessions(self)
         self.recoveryscripts = RecoveryScripts(self)
-        self.organizations = Organizations(self)
+        self.zorgs = Zorgs(self)
         self.encryptiondetection = EncryptionDetection(self)
         self.localsite = LocalSite(self.zvm_address, self.token)
         self.datastores = Datastores(self)
