@@ -25,7 +25,6 @@ from .tasks import Tasks
 from .vpgs import VPGs
 # from .vpg_settings import VPGSettings
 from .vms import VMs
-from .checkpoints import Checkpoints
 from .failover import Failover
 from .alerts import Alerts
 from .peersites import PeerSites
@@ -59,7 +58,6 @@ class ZVMAClient:
         self.vpgs = VPGs(self)
         # self.vpg_settings = VPGSettings(self)
         self.vms = VMs(self)
-        self.checkpoints = Checkpoints(self)
         self.failover = Failover(self)
         self.alerts = Alerts(self)
         self.peersites = PeerSites(self)

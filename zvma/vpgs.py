@@ -15,6 +15,10 @@ import time
 import json
 from .tasks import Tasks
 from .common import ZertoVPGStatus
+
+# Set up logging
+# logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
+
 class VPGs:
     def __init__(self, client):
         self.client = client
@@ -36,6 +40,7 @@ class VPGs:
             response = requests.get(url, headers=headers, verify=self.client.verify_certificate)
             response.raise_for_status()
             vpgs = response.json()
+            # logging.info(f"VPGs: {json.dumps(vpgs, indent=2)}")
             if vpg_name:
                 matching_vpg = next((vpg for vpg in vpgs if vpg.get("VpgName") == vpg_name), None)
                 if not matching_vpg:
@@ -43,12 +48,7 @@ class VPGs:
                     return {}
                 return matching_vpg
             if vpg_identifier:
-                matching_vpg = next((vpg for vpg in vpgs if vpg.get("VpgIdentifier") == vpg_identifier), None)
-                if not matching_vpg:
-                    logging.warning(f"No VPG found with the ID '{vpg_identifier}'")
-                    return {}
-                return matching_vpg
-            return vpgs
+                return vpgs
         except requests.exceptions.RequestException as e:
             if e.response is not None:
                 logging.error(f"HTTPError: {e.response.status_code} - {e.response.reason}")
@@ -535,4 +535,74 @@ class VPGs:
             raise
         except Exception as e:
             logging.error(f"Unexpected error while generating peer site pairing token: {e}")
+            raise
+
+
+    def list_checkpoints(self, vpg_name, start_date=None, endd_date=None, checkpoint_date_str=None, latest=None):
+        """
+        Fetches a list of checkpoints for a specified Virtual Protection Group (VPG).
+        
+        Parameters:
+            vpg_name (str): The name of the Virtual Protection Group (VPG) to fetch checkpoints for.
+            start_date (str): The start date for filtering checkpoints, in ISO 8601 format (e.g., '2024-11-13T00:00:00Z').
+            endd_date (str): The end date for filtering checkpoints, in ISO 8601 format (e.g., '2024-11-14T00:00:00Z').
+            checkpoint_date_str (str): A specific date string in the format 'Month Day, Year HH:MM:SS AM/PM'
+                                    (e.g., 'November 13, 2024 1:43:02 PM') to search for an exact checkpoint.
+            latest (bool): If True, returns the checkpoint with the most recent timestamp.
+
+        Returns:
+            dict: A single checkpoint that matches `checkpoint_date_str` or the latest checkpoint if `latest=True`.
+            list: The full list of checkpoints if neither `checkpoint_date_str` nor `latest` is specified.
+            None: If no matching checkpoint is found or an error occurs.
+        
+        Raises:
+            SystemExit: If a request exception occurs during the API call.
+        """        
+        logging.info(f'VPGs.list_checkpoints(vpg_name={vpg_name}, start_date={start_date}, endd_date={endd_date}, checkpoint_date_str={checkpoint_date_str}, latest={latest})')
+        vpgid = (self.list_vpgs(vpg_name=vpg_name))['VpgIdentifier']
+        vpgs_uri = f"https://{self.client.zvm_address}/v1/vpgs/{vpgid}/checkpoints"
+        headers = {
+            'Content-Type': 'application/json',
+            'Authorization': f'Bearer {self.client.token}'
+        }
+
+        params = {
+            "startDate": start_date,
+            "endDate": endd_date
+        }
+        try:
+            response = requests.get(vpgs_uri, headers=headers, params=params, verify=self.client.verify_certificate)
+            response.raise_for_status()
+            checkpoints = response.json()
+
+            if not checkpoints:
+                logging.warning("No checkpoints found.")
+                return []
+
+            if checkpoint_date_str:
+                check_point_timestamp = self.__convert_datetime_to_timestamp(date_str = checkpoint_date_str)
+                matching_checkpoints = next((checkpoint for checkpoint in checkpoints if checkpoint.get("TimeStamp") == check_point_timestamp), None)
+                if not check_point_timestamp:
+                    logging.warning(f"No checkpoint {checkpoint_date_str} found")
+                    return {}
+                return matching_checkpoints
+            
+            if latest:
+                # Find the checkpoint with the most recent timestamp
+                latest_checkpoint = max(checkpoints, key=lambda x: x.get("TimeStamp"))
+                logging.debug(f"Latest checkpoint found: {latest_checkpoint}")
+                return latest_checkpoint  
+
+            return checkpoints
+
+        except requests.exceptions.RequestException as e:
+            if e.response is not None:
+                logging.error(f"HTTPError: {e.response.status_code} - {e.response.reason}")
+                try:
+                    error_details = e.response.json()
+                    logging.error(f"Error Message: {error_details.get('Message', 'No detailed error message available')}")
+                except ValueError:
+                    logging.error(f"Response content: {e.response.text}")
+            else:
+                logging.error("HTTPError occurred with no response attached.")
             raise
