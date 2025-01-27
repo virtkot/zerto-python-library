@@ -49,6 +49,7 @@ class VPGs:
                 return matching_vpg
             if vpg_identifier:
                 return vpgs
+            return vpgs
         except requests.exceptions.RequestException as e:
             if e.response is not None:
                 logging.error(f"HTTPError: {e.response.status_code} - {e.response.reason}")
@@ -536,7 +537,6 @@ class VPGs:
         except Exception as e:
             logging.error(f"Unexpected error while generating peer site pairing token: {e}")
             raise
-
 
     def list_checkpoints(self, vpg_name, start_date=None, endd_date=None, checkpoint_date_str=None, latest=None):
         """
