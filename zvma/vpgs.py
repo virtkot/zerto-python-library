@@ -1,7 +1,7 @@
 # Legal Disclaimer
 # This script is an example script and is not supported under any Zerto support program or service. 
 # The author and Zerto further disclaim all implied warranties including, without limitation, 
-# any implied warranties of merchantability or of fitness for a particular purpose.
+# any implied warranties of merchantability or of fitness for a particular purpose. 
 # In no event shall Zerto, its authors or anyone else involved in the creation, 
 # production or delivery of the scripts be liable for any damages whatsoever (including, 
 # without limitation, damages for loss of business profits, business interruption, loss of business 
@@ -14,42 +14,115 @@ import logging
 import time
 import json
 from .tasks import Tasks
-from .common import ZertoVPGStatus
-
-# Set up logging
-# logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
+from .common import ZertoVPGStatus, ZertoVPGSubstatus, ZertoProtectedSiteType, ZertoRecoverySiteType, ZertoVPGPriority
+from typing import Optional, Union, Dict, List
 
 class VPGs:
     def __init__(self, client):
         self.client = client
         self.tasks = Tasks(client)
 
-    def list_vpgs(self, vpg_name=None, vpg_identifier=None):
-        logging.info(f'VPGs.list_vpgs(vpg_name={vpg_name}, vpg_identifier={vpg_identifier})')
+    def list_vpgs(self, 
+                  vpg_name: str = None,
+                  vpg_identifier: str = None,
+                  status: ZertoVPGStatus = None,
+                  sub_status: ZertoVPGSubstatus = None,
+                  protected_site_type: ZertoProtectedSiteType = None,
+                  recovery_site_type: ZertoRecoverySiteType = None,
+                  protected_site_identifier: str = None,
+                  recovery_site_identifier: str = None,
+                  organization_name: str = None,
+                  zorg_identifier: str = None,
+                  priority: ZertoVPGPriority = None,
+                  service_profile_identifier: str = None,
+                  backup_enabled: bool = None) -> Dict | List[Dict]:
+        """
+        Get information about VPGs. If vpg_identifier or vpg_name is provided, returns a single VPG.
+        Otherwise, returns a list of VPGs that match the filter criteria.
+
+        Args:
+            vpg_name: Get a specific VPG by name
+            vpg_identifier: Get a specific VPG by identifier
+            status: Filter by VPG status
+            sub_status: Filter by VPG sub-status
+            protected_site_type: The protected site type
+            recovery_site_type: The recovery site type
+            protected_site_identifier: The identifier of the protected site
+            recovery_site_identifier: The identifier of the recovery site
+            organization_name: Filter by ZORG name
+            zorg_identifier: Filter by ZORG identifier
+            priority: Filter by VPG priority
+            service_profile_identifier: Filter by service profile ID
+            backup_enabled: Deprecated parameter
+
+        Returns:
+            Dict: When vpg_identifier or vpg_name is provided
+            List[Dict]: When filtering VPGs without specific identifier
+        """
+        # Construct the base URL
         if vpg_identifier:
             url = f"https://{self.client.zvm_address}/v1/vpgs/{vpg_identifier}"
         else:
             url = f"https://{self.client.zvm_address}/v1/vpgs"
-        
+
         headers = {
             'Content-Type': 'application/json',
             'Authorization': f'Bearer {self.client.token}'
         }
-        
+
+        # Only include query parameters if we're not getting a specific VPG
+        params = {}
+        if not vpg_identifier:
+            params = {
+                'name': vpg_name,
+                'status': status.get_name_by_value(status.value) if status else None,
+                'subStatus': sub_status.get_name_by_value(sub_status.value) if sub_status else None,
+                'protectedSiteType': protected_site_type.get_name_by_value(protected_site_type.value) if protected_site_type else None,
+                'recoverySiteType': recovery_site_type.get_name_by_value(recovery_site_type.value) if recovery_site_type else None,
+                'protectedSiteIdentifier': protected_site_identifier,
+                'recoverySiteIdentifier': recovery_site_identifier,
+                'organizationName': organization_name,
+                'zorgIdentifier': zorg_identifier,
+                'priority': priority.get_name_by_value(priority.value) if priority else None,
+                'serviceProfileIdentifier': service_profile_identifier,
+                'backupEnabled': backup_enabled
+            }
+            # Remove None values from params
+            params = {k: v for k, v in params.items() if v is not None}
+
+        logging.info(f"VPGs.list_vpgs: Fetching VPGs with parameters:")
+        if vpg_identifier:
+            logging.info(f"  vpg_identifier: {vpg_identifier}")
+        for key, value in params.items():
+            logging.info(f"  {key}: {value}")
+
         try:
-            response = requests.get(url, headers=headers, verify=self.client.verify_certificate)
+            response = requests.get(
+                url, 
+                headers=headers, 
+                params=params, 
+                verify=self.client.verify_certificate,
+                timeout=30
+            )
             response.raise_for_status()
-            vpgs = response.json()
-            # logging.info(f"VPGs: {json.dumps(vpgs, indent=2)}")
-            if vpg_name:
-                matching_vpg = next((vpg for vpg in vpgs if vpg.get("VpgName") == vpg_name), None)
-                if not matching_vpg:
-                    logging.warning(f"No VPG found with the name '{vpg_name}'")
-                    return {}
-                return matching_vpg
+            result = response.json()
+            
+            # If we're querying by name, return the first matching VPG
+            if vpg_name and isinstance(result, list):
+                matching_vpg = next((vpg for vpg in result if vpg.get("VpgName") == vpg_name), None)
+                if matching_vpg:
+                    logging.info(f"Successfully retrieved VPG details for {vpg_name}")
+                    return matching_vpg
+                logging.warning(f"No VPG found with name {vpg_name}")
+                return {}
+            
             if vpg_identifier:
-                return vpgs
-            return vpgs
+                logging.info(f"Successfully retrieved VPG details for {vpg_identifier}")
+            else:
+                logging.info(f"Successfully retrieved {len(result)} VPGs")
+            
+            return result
+
         except requests.exceptions.RequestException as e:
             if e.response is not None:
                 logging.error(f"HTTPError: {e.response.status_code} - {e.response.reason}")
@@ -60,10 +133,6 @@ class VPGs:
                     logging.error(f"Response content: {e.response.text}")
             else:
                 logging.error("HTTPError occurred with no response attached.")
-            raise
-
-        except Exception as e:
-            logging.error(f"Unexpected error while generating peer site pairing token: {e}")
             raise
 
     def commit_vpg(self, vpg_settings_id, vpg_name, sync=False, expected_status=ZertoVPGStatus.Initializing):
@@ -281,7 +350,7 @@ class VPGs:
             logging.error(f"Unexpected error while generating peer site pairing token: {e}")
             raise
 
-    def stop_failover_test(self, vpg_name, sync=True):
+    def stop_failover_test(self, vpg_name, failoverTestSuccess, failoverTestSummary, sync=True):
         """
         Stop a failover test for a given VPG by its name.
 
@@ -456,7 +525,7 @@ class VPGs:
             raise
 
     def get_vpg_settings_by_id(self, vpg_settings_id):
-        url = f"https://{self.client.zvm_address}/v1/vpgs/settings/{vpg_settings_id}"
+        url = f"https://{self.client.zvm_address}/v1/vpgSettings/{vpg_settings_id}"
         headers = {
             'Content-Type': 'application/json',
             'Authorization': f'Bearer {self.client.token}'
@@ -470,17 +539,27 @@ class VPGs:
             raise
 
     def update_vpg_settings(self, vpg_settings_id, payload):
-        url = f"https://{self.client.zvm_address}/v1/vpgs/settings/{vpg_settings_id}"
+        url = f"https://{self.client.zvm_address}/v1/vpgSettings/{vpg_settings_id}"
         headers = {
             'Content-Type': 'application/json',
             'Authorization': f'Bearer {self.client.token}'
         }
+        logging.info(f"VPGs.update_vpg_settings: Updating VPG settings for ID: {vpg_settings_id}")
+        logging.debug(f"VPGs.update_vpg_settings: Payload: {json.dumps(payload, indent=4)}")
         try:
             response = requests.put(url, json=payload, headers=headers, verify=self.client.verify_certificate)
             response.raise_for_status()
-            return response.json()
+            return response
         except requests.exceptions.RequestException as e:
-            logging.error(f"Failed to update VPG settings: {e}")
+            if e.response is not None:
+                logging.error(f"HTTPError: {e.response.status_code} - {e.response.reason}")
+                try:
+                    error_details = e.response.json()
+                    logging.error(f"Error Message: {error_details.get('Message', 'No detailed error message available')}")
+                except ValueError:
+                    logging.error(f"Response content: {e.response.text}")
+            else:
+                logging.error("HTTPError occurred with no response attached.")
             raise
 
     def delete_vpg_settings(self, vpg_settings_id):
@@ -494,7 +573,15 @@ class VPGs:
             response.raise_for_status()
             return response.json()
         except requests.exceptions.RequestException as e:
-            logging.error(f"Failed to delete VPG settings: {e}")
+            if e.response is not None:
+                logging.error(f"HTTPError: {e.response.status_code} - {e.response.reason}")
+                try:
+                    error_details = e.response.json()
+                    logging.error(f"Error Message: {error_details.get('Message', 'No detailed error message available')}")
+                except ValueError:
+                    logging.error(f"Response content: {e.response.text}")
+            else:
+                logging.error("HTTPError occurred with no response attached.")
             raise
 
     def create_vpg_settings(self, basic, journal, recovery, networks, vpg_identifier=None):
@@ -606,3 +693,295 @@ class VPGs:
             else:
                 logging.error("HTTPError occurred with no response attached.")
             raise
+
+    def create_checkpoint(self, checkpoint_name: str, vpg_identifier: str = None, vpg_name: str = None) -> str:
+        """
+        Create a tagged checkpoint for the VPG.
+
+        Args:
+            checkpoint_name: The name/tag to assign to the checkpoint
+            vpg_identifier: The identifier of the VPG
+            vpg_name: The name of the VPG (alternative to vpg_identifier)
+
+        Returns:
+            str: The task identifier that can be used to monitor the operation
+
+        Raises:
+            requests.exceptions.RequestException: If the API request fails
+            ValueError: If neither vpg_identifier nor vpg_name is provided, or if VPG name is not found
+        """
+        if not vpg_identifier and not vpg_name:
+            raise ValueError("Either vpg_identifier or vpg_name must be provided")
+
+        # If vpg_name is provided, get the vpg_identifier
+        if vpg_name and not vpg_identifier:
+            vpg = self.list_vpgs(vpg_name=vpg_name)
+            if not vpg:
+                raise ValueError(f"VPG with name '{vpg_name}' not found")
+            vpg_identifier = vpg.get('VpgIdentifier')
+            logging.info(f"Found VPG identifier '{vpg_identifier}' for VPG name '{vpg_name}'")
+
+        url = f"https://{self.client.zvm_address}/v1/vpgs/{vpg_identifier}/checkpoints"
+        
+        headers = {
+            'Content-Type': 'application/json',
+            'Authorization': f'Bearer {self.client.token}'
+        }
+
+        data = {
+            "CheckpointName": checkpoint_name
+        }
+
+        logging.info(f"VPGs.create_checkpoint: Creating checkpoint '{checkpoint_name}' for VPG {vpg_identifier}")
+
+        try:
+            response = requests.post(
+                url,
+                headers=headers,
+                json=data,
+                verify=self.client.verify_certificate,
+                timeout=30
+            )
+            response.raise_for_status()
+            task_id = response.json()
+            logging.info(f"Successfully initiated checkpoint creation, task_id={task_id}")
+            return task_id
+
+        except requests.exceptions.RequestException as e:
+            if e.response is not None:
+                logging.error(f"HTTPError: {e.response.status_code} - {e.response.reason}")
+                try:
+                    error_details = e.response.json()
+                    logging.error(f"Error Message: {error_details.get('Message', 'No detailed error message available')}")
+                except ValueError:
+                    logging.error(f"Response content: {e.response.text}")
+            else:
+                logging.error("HTTPError occurred with no response attached.")
+            raise
+
+    def export_vpg_settings(self, vpg_names: List[str]) -> dict:
+        """
+        Export settings for specified VPGs.
+
+        Args:
+            vpg_names: List of VPG names to export settings for
+
+        Returns:
+            dict: The exported VPG settings in the format:
+                {
+                    "timeStamp": "2025-02-08T21:50:46.574Z",
+                    "exportResult": {
+                        "result": str,
+                        "message": str
+                    }
+                }
+
+        Raises:
+            requests.exceptions.RequestException: If the API request fails
+        """
+        url = f"https://{self.client.zvm_address}/v1/vpgSettings/exportSettings"
+        headers = {
+            'Content-Type': 'application/json',
+            'Authorization': f'Bearer {self.client.token}'
+        }
+        
+        payload = {
+            "vpgNames": vpg_names
+        }
+
+        logging.info(f"VPGs.export_vpg_settings: Exporting settings for VPGs: {vpg_names}")
+        
+        try:
+            response = requests.post(url, headers=headers, json=payload, verify=self.client.verify_certificate)
+            response.raise_for_status()
+            result = response.json()
+            logging.info(f"Successfully exported settings for {len(vpg_names)} VPGs at {result.get('timeStamp')}")
+            logging.debug(f"Export result: {json.dumps(result, indent=2)}")
+            return result
+        
+        except requests.exceptions.RequestException as e:
+            if e.response is not None:
+                logging.error(f"HTTPError: {e.response.status_code} - {e.response.reason}")
+                try:
+                    error_details = e.response.json()
+                    logging.error(f"Error Message: {error_details.get('Message', 'No detailed error message available')}")
+                except ValueError:
+                    logging.error(f"Response content: {e.response.text}")
+            else:
+                logging.error("HTTPError occurred with no response attached.")
+            raise
+
+    def list_exported_vpg_settings(self) -> List[Dict]:
+        """
+        Get all available exported settings files.
+
+        Returns:
+            List[Dict]: List of exported settings files in the format:
+                [
+                    {
+                        "timeStamp": "2025-02-08T22:02:18.685Z"
+                    }
+                ]
+
+        Raises:
+            requests.exceptions.RequestException: If the API request fails
+        """
+        url = f"https://{self.client.zvm_address}/v1/vpgSettings/exportedSettings"
+        headers = {
+            'Content-Type': 'application/json',
+            'Authorization': f'Bearer {self.client.token}'
+        }
+
+        logging.debug("Fetching list of exported VPG settings")
+        
+        try:
+            response = requests.get(url, headers=headers, verify=self.client.verify_certificate)
+            response.raise_for_status()
+            result = response.json()
+            logging.info(f"Found {len(result)} exported settings files")
+            logging.debug(f"Exported settings list: {json.dumps(result, indent=2)}")
+            return result
+        
+        except requests.exceptions.RequestException as e:
+            if e.response is not None:
+                logging.error(f"HTTPError: {e.response.status_code} - {e.response.reason}")
+                try:
+                    error_details = e.response.json()
+                    logging.error(f"Error Message: {error_details.get('Message', 'No detailed error message available')}")
+                except ValueError:
+                    logging.error(f"Response content: {e.response.text}")
+            else:
+                logging.error("HTTPError occurred with no response attached.")
+            raise
+
+    def read_exported_vpg_settings(self, timestamp: str, vpg_names: List[str] = None) -> dict:
+        """
+        Read exported settings from a file of given timestamp.
+
+        Args:
+            timestamp: The timestamp of the exported settings file (format: YYYY-MM-DDThh:mm:ss.SSSZ)
+            vpg_names: Optional list of VPG names to filter the exported settings
+
+        Returns:
+            dict: The exported VPG settings containing:
+                - ExportedVpgSettingsApi: List[dict] - List of VPG settings
+                - ErrorMessage: str - Error message if any
+
+        Raises:
+            requests.exceptions.RequestException: If the API request fails
+        """
+        url = f"https://{self.client.zvm_address}/v1/vpgSettings/exportedSettings/{timestamp}"
+        headers = {
+            'Content-Type': 'application/json',
+            'Authorization': f'Bearer {self.client.token}'
+        }
+
+        payload = {}
+        if vpg_names:
+            payload['vpgNames'] = vpg_names
+
+        logging.info(f"VPGs.read_exported_vpg_settings: Reading exported VPG settings for timestamp: {timestamp}")
+        if vpg_names:
+            logging.debug(f"Filtering for VPGs: {vpg_names}")
+        
+        try:
+            response = requests.post(url, headers=headers, json=payload, verify=self.client.verify_certificate)
+            response.raise_for_status()
+            result = response.json()
+            logging.debug(f"VPGs.read_exported_vpg_settings: result: {json.dumps(result, indent=4)}")
+            
+            return result
+            
+        except requests.exceptions.RequestException as e:
+            if e.response is not None:
+                logging.error(f"HTTPError: {e.response.status_code} - {e.response.reason}")
+                try:
+                    error_details = e.response.json()
+                    logging.error(f"Error Message: {error_details.get('Message', 'No detailed error message available')}")
+                except ValueError:
+                    logging.error(f"Response content: {e.response.text}")
+            else:
+                logging.error("HTTPError occurred with no response attached.")
+            raise
+
+    def import_vpg_settings(self, settings: Dict) -> dict:
+        """
+        Import VPG settings.
+
+        Args:
+            settings: Dictionary containing the VPG settings to import. Must include:
+                - ExportedVpgSettingsApi: List of VPG settings with detailed configuration
+
+        Returns:
+            dict: The import result containing:
+                - validationFailedResults: List[dict] - VPGs that failed validation
+                    - vpgName: str - Name of the VPG
+                    - errorMessages: List[str] - List of validation error messages
+                - importFailedResults: List[dict] - VPGs that failed to import
+                    - vpgName: str - Name of the VPG
+                    - errorMessage: str - Import error message
+                - importTaskIdentifiers: List[dict] - Successfully initiated imports
+                    - vpgName: str - Name of the VPG
+                    - taskIdentifier: str - Task ID for tracking the import
+
+        Raises:
+            requests.exceptions.RequestException: If the API request fails
+            ValueError: If settings dictionary is missing required fields
+        """
+        url = f"https://{self.client.zvm_address}/v1/vpgSettings/import"
+        headers = {
+            'Content-Type': 'application/json',
+            'Authorization': f'Bearer {self.client.token}'
+        }
+
+        # Validate input settings
+        if not isinstance(settings, dict):
+            raise ValueError("Settings must be a dictionary")
+        if 'ExportedVpgSettingsApi' not in settings:
+            raise ValueError("Settings must contain 'ExportedVpgSettingsApi' key")
+
+        # Prepare payload
+        payload = {
+            "ExportedVpgSettingsApi": settings['ExportedVpgSettingsApi']
+        }
+
+        logging.info(f"VPGs.import_vpg_settings: Importing settings for {len(settings['ExportedVpgSettingsApi'])} VPGs")
+        
+        try:
+            response = requests.post(url, headers=headers, json=payload, verify=self.client.verify_certificate)
+            response.raise_for_status()
+            result = response.json()
+            logging.debug(f"VPGs.import_vpg_settings: result: {json.dumps(result, indent=4)}")
+            
+            # Log validation failures
+            if result.get('validationFailedResults'):
+                for failure in result['validationFailedResults']:
+                    logging.error(f"Validation failed for VPG '{failure['vpgName']}': {', '.join(failure['errorMessages'])}")
+            
+            # Log import failures
+            if result.get('importFailedResults'):
+                for failure in result['importFailedResults']:
+                    logging.error(f"Import failed for VPG '{failure['vpgName']}': {failure['errorMessage']}")
+            
+            # Log successful imports
+            if result.get('importTaskIdentifiers'):
+                for task in result['importTaskIdentifiers']:
+                    logging.info(f"Import initiated for VPG '{task['vpgName']}' with task ID: {task['taskIdentifier']}")
+            
+            logging.debug(f"Import result: {json.dumps(result, indent=2)}")
+            
+            return result
+            
+        except requests.exceptions.RequestException as e:
+            if e.response is not None:
+                logging.error(f"HTTPError: {e.response.status_code} - {e.response.reason}")
+                try:
+                    error_details = e.response.json()
+                    logging.error(f"Error Message: {error_details.get('Message', 'No detailed error message available')}")
+                except ValueError:
+                    logging.error(f"Response content: {e.response.text}")
+            else:
+                logging.error("HTTPError occurred with no response attached.")
+            raise
+
+  
