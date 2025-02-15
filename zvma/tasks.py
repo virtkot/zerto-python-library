@@ -27,6 +27,11 @@ class Tasks:
         }
 
         while True:
+            # Check if we've exceeded the timeout
+            if time.time() - start_time > timeout:
+                logging.error(f'Task ID={task_identifier} timed out after {timeout} seconds')
+                raise TimeoutError(f"Task did not complete within {timeout} seconds")
+
             url = f"https://{self.client.zvm_address}/v1/tasks/{task_identifier}"
             try:
                 response = requests.get(url, headers=headers, verify=self.client.verify_certificate)

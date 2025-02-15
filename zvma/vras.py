@@ -11,13 +11,16 @@
 
 import requests
 import logging
+import json
+from typing import Dict, List, Optional
 
 class VRA:
     def __init__(self, client):
         self.client = client
 
-    def list_vras(self):
-        logging.info("VRA.list_vras: Fetching all VRAs information...")
+    def list_vras(self) -> List[Dict]:
+        """List all VRAs."""
+        logging.info(f"VRA.list_vras(zvm_address={self.client.zvm_address})")
         url = f"https://{self.client.zvm_address}/v1/vras"
         headers = {
             'Content-Type': 'application/json',
@@ -26,14 +29,37 @@ class VRA:
         try:
             response = requests.get(url, headers=headers, verify=self.client.verify_certificate)
             response.raise_for_status()
-            logging.info("VRA.list_vras: Successfully retrieved all VRAs information.")
-            return response.json()
+            result = response.json()
+            logging.info(f"Successfully retrieved {len(result)} VRAs")
+            logging.debug(f"VRA.list_vras result: {json.dumps(result, indent=4)}")
+            return result
         except requests.exceptions.RequestException as e:
-            logging.error(f"VRA.list_vras: Failed to get all VRAs information: {e}")
+            if e.response is not None:
+                logging.error(f"HTTPError: {e.response.status_code} - {e.response.reason}")
+                try:
+                    error_details = e.response.json()
+                    logging.error(f"Error Message: {error_details.get('Message', 'No detailed error message available')}")
+                except ValueError:
+                    logging.error(f"Response content: {e.response.text}")
+            else:
+                logging.error("HTTPError occurred with no response attached.")
             raise
 
-    def create_vra(self, payload):
-        logging.info("VRA.create_vra: Creating a new VRA...")
+    def create_vra(self, payload: Dict, sync: bool = True) -> Dict:
+        """Create a new VRA.
+        
+        Args:
+            payload: The VRA configuration
+            sync: If True, wait for task completion (default: True)
+        
+        Returns:
+            Dict: The creation result
+        
+        Raises:
+            requests.exceptions.RequestException: If the API request fails
+        """
+        logging.info(f"VRA.create_vra(zvm_address={self.client.zvm_address}, sync={sync})")
+        logging.debug(f"VRA.create_vra payload: {json.dumps(payload, indent=4)}")
         url = f"https://{self.client.zvm_address}/v1/vras"
         headers = {
             'Content-Type': 'application/json',
@@ -42,14 +68,40 @@ class VRA:
         try:
             response = requests.post(url, headers=headers, json=payload, verify=self.client.verify_certificate)
             response.raise_for_status()
-            logging.info("VRA.create_vra: Successfully created a new VRA.")
-            return response.json()
+            task_id = response.json()
+            logging.info("Successfully initiated VRA creation")
+            logging.debug(f"VRA.create_vra task_id: {task_id}")
+
+            if sync:
+                # Wait for task completion
+                self.client.tasks.wait_for_task_completion(task_id, timeout=300, interval=5)
+            return task_id
         except requests.exceptions.RequestException as e:
-            logging.error(f"VRA.create_vra: Failed to create a new VRA: {e}")
+            if e.response is not None:
+                logging.error(f"HTTPError: {e.response.status_code} - {e.response.reason}")
+                try:
+                    error_details = e.response.json()
+                    logging.error(f"Error Message: {error_details.get('Message', 'No detailed error message available')}")
+                except ValueError:
+                    logging.error(f"Response content: {e.response.text}")
+            else:
+                logging.error("HTTPError occurred with no response attached.")
             raise
 
-    def get_vra(self, vra_identifier):
-        logging.info(f"VRA.get_vra: Fetching VRA information for identifier: {vra_identifier}...")
+    def get_vra(self, vra_identifier: str) -> Dict:
+        """
+        Get information about a specific VRA.
+
+        Args:
+            vra_identifier: The identifier of the VRA to retrieve
+
+        Returns:
+            Dict: The VRA information
+
+        Raises:
+            requests.exceptions.RequestException: If the API request fails
+        """
+        logging.info(f"VRA.get_vra(zvm_address={self.client.zvm_address}, vra_identifier={vra_identifier})")
         url = f"https://{self.client.zvm_address}/v1/vras/{vra_identifier}"
         headers = {
             'Content-Type': 'application/json',
@@ -58,14 +110,37 @@ class VRA:
         try:
             response = requests.get(url, headers=headers, verify=self.client.verify_certificate)
             response.raise_for_status()
-            logging.info(f"VRA.get_vra: Successfully retrieved VRA information for identifier: {vra_identifier}.")
-            return response.json()
+            result = response.json()
+            logging.info(f"Successfully retrieved VRA information for identifier: {vra_identifier}")
+            logging.debug(f"VRA.get_vra result: {json.dumps(result, indent=4)}")
+            return result
         except requests.exceptions.RequestException as e:
-            logging.error(f"VRA.get_vra: Failed to get VRA information for identifier {vra_identifier}: {e}")
+            if e.response is not None:
+                logging.error(f"HTTPError: {e.response.status_code} - {e.response.reason}")
+                try:
+                    error_details = e.response.json()
+                    logging.error(f"Error Message: {error_details.get('Message', 'No detailed error message available')}")
+                except ValueError:
+                    logging.error(f"Response content: {e.response.text}")
+            else:
+                logging.error("HTTPError occurred with no response attached.")
             raise
 
-    def delete_vra(self, vra_identifier):
-        logging.info(f"VRA.delete_vra: Deleting VRA for identifier: {vra_identifier}...")
+    def delete_vra(self, vra_identifier: str, sync: bool = True) -> Dict:
+        """
+        Delete a specific VRA.
+
+        Args:
+            vra_identifier: The identifier of the VRA to delete
+            sync: If True, wait for task completion (default: True)
+
+        Returns:
+            Dict: The deletion result
+
+        Raises:
+            requests.exceptions.RequestException: If the API request fails
+        """
+        logging.info(f"VRA.delete_vra(zvm_address={self.client.zvm_address}, vra_identifier={vra_identifier})")
         url = f"https://{self.client.zvm_address}/v1/vras/{vra_identifier}"
         headers = {
             'Content-Type': 'application/json',
@@ -74,14 +149,43 @@ class VRA:
         try:
             response = requests.delete(url, headers=headers, verify=self.client.verify_certificate)
             response.raise_for_status()
-            logging.info(f"VRA.delete_vra: Successfully deleted VRA for identifier: {vra_identifier}.")
-            return response.json()
+            task_id = response.json()
+            logging.info(f"Successfully initiated deletion of VRA with identifier: {vra_identifier}")
+            logging.debug(f"VRA.delete_vra task_id: {task_id}")
+
+            if sync:
+                # Wait for task completion
+                self.client.tasks.wait_for_task_completion(task_id, timeout=300, interval=5)
+            return task_id
         except requests.exceptions.RequestException as e:
-            logging.error(f"VRA.delete_vra: Failed to delete VRA for identifier {vra_identifier}: {e}")
+            if e.response is not None:
+                logging.error(f"HTTPError: {e.response.status_code} - {e.response.reason}")
+                try:
+                    error_details = e.response.json()
+                    logging.error(f"Error Message: {error_details.get('Message', 'No detailed error message available')}")
+                except ValueError:
+                    logging.error(f"Response content: {e.response.text}")
+            else:
+                logging.error("HTTPError occurred with no response attached.")
             raise
 
-    def update_vra(self, vra_identifier, payload):
-        logging.info(f"VRA.update_vra: Updating VRA for identifier: {vra_identifier}...")
+    def update_vra(self, vra_identifier: str, payload: Dict, sync: bool = True) -> Dict:
+        """
+        Update a specific VRA's configuration.
+
+        Args:
+            vra_identifier: The identifier of the VRA to update
+            payload: The update configuration
+            sync: If True, wait for task completion (default: True)
+
+        Returns:
+            Dict: The update result
+
+        Raises:
+            requests.exceptions.RequestException: If the API request fails
+        """
+        logging.info(f"VRA.update_vra(zvm_address={self.client.zvm_address}, vra_identifier={vra_identifier})")
+        logging.debug(f"VRA.update_vra payload: {json.dumps(payload, indent=4)}")
         url = f"https://{self.client.zvm_address}/v1/vras/{vra_identifier}"
         headers = {
             'Content-Type': 'application/json',
@@ -90,14 +194,42 @@ class VRA:
         try:
             response = requests.put(url, headers=headers, json=payload, verify=self.client.verify_certificate)
             response.raise_for_status()
-            logging.info(f"VRA.update_vra: Successfully updated VRA for identifier: {vra_identifier}.")
-            return response.json()
+            task_id = response.json()
+            logging.info(f"Successfully initiated update for VRA with identifier: {vra_identifier}")
+            logging.debug(f"VRA.update_vra task_id: {task_id}")
+
+            if sync:
+                # Wait for task completion
+                self.client.tasks.wait_for_task_completion(task_id, timeout=300, interval=5)
+            return task_id
         except requests.exceptions.RequestException as e:
-            logging.error(f"VRA.update_vra: Failed to update VRA for identifier {vra_identifier}: {e}")
+            if e.response is not None:
+                logging.error(f"HTTPError: {e.response.status_code} - {e.response.reason}")
+                try:
+                    error_details = e.response.json()
+                    logging.error(f"Error Message: {error_details.get('Message', 'No detailed error message available')}")
+                except ValueError:
+                    logging.error(f"Response content: {e.response.text}")
+            else:
+                logging.error("HTTPError occurred with no response attached.")
             raise
 
-    def create_vra_cluster(self, payload):
-        logging.info("VRA.create_vra_cluster: Creating a new VRA cluster...")
+    def create_vra_cluster(self, payload: Dict, sync: bool = True) -> Dict:
+        """
+        Create a new VRA cluster.
+
+        Args:
+            payload: The cluster configuration
+            sync: If True, wait for task completion (default: True)
+
+        Returns:
+            Dict: The creation result
+
+        Raises:
+            requests.exceptions.RequestException: If the API request fails
+        """
+        logging.info(f"VRA.create_vra_cluster(zvm_address={self.client.zvm_address})")
+        logging.debug(f"VRA.create_vra_cluster payload: {json.dumps(payload, indent=4)}")
         url = f"https://{self.client.zvm_address}/v1/vras/clusters"
         headers = {
             'Content-Type': 'application/json',
@@ -106,14 +238,40 @@ class VRA:
         try:
             response = requests.post(url, headers=headers, json=payload, verify=self.client.verify_certificate)
             response.raise_for_status()
-            logging.info("VRA.create_vra_cluster: Successfully created a new VRA cluster.")
-            return response.json()
+            task_id = response.json()
+            logging.info("Successfully initiated VRA cluster creation")
+            logging.debug(f"VRA.create_vra_cluster task_id: {task_id}")
+
+            if sync:
+                # Wait for task completion
+                self.client.tasks.wait_for_task_completion(task_id, timeout=300, interval=5)
+            return task_id
         except requests.exceptions.RequestException as e:
-            logging.error(f"VRA.create_vra_cluster: Failed to create a new VRA cluster: {e}")
+            if e.response is not None:
+                logging.error(f"HTTPError: {e.response.status_code} - {e.response.reason}")
+                try:
+                    error_details = e.response.json()
+                    logging.error(f"Error Message: {error_details.get('Message', 'No detailed error message available')}")
+                except ValueError:
+                    logging.error(f"Response content: {e.response.text}")
+            else:
+                logging.error("HTTPError occurred with no response attached.")
             raise
 
-    def delete_vra_cluster(self, cluster_identifier):
-        logging.info(f"VRA.delete_vra_cluster: Deleting VRA cluster for identifier: {cluster_identifier}...")
+    def delete_vra_cluster(self, cluster_identifier: str) -> Dict:
+        """
+        Delete a VRA cluster.
+
+        Args:
+            cluster_identifier: The identifier of the cluster to delete
+
+        Returns:
+            Dict: The deletion result
+
+        Raises:
+            requests.exceptions.RequestException: If the API request fails
+        """
+        logging.info(f"VRA.delete_vra_cluster(zvm_address={self.client.zvm_address}, cluster_identifier={cluster_identifier})")
         url = f"https://{self.client.zvm_address}/v1/vras/clusters/{cluster_identifier}"
         headers = {
             'Content-Type': 'application/json',
@@ -122,14 +280,38 @@ class VRA:
         try:
             response = requests.delete(url, headers=headers, verify=self.client.verify_certificate)
             response.raise_for_status()
-            logging.info(f"VRA.delete_vra_cluster: Successfully deleted VRA cluster for identifier: {cluster_identifier}.")
-            return response.json()
+            result = response.json()
+            logging.info(f"Successfully deleted VRA cluster with identifier: {cluster_identifier}")
+            logging.debug(f"VRA.delete_vra_cluster result: {json.dumps(result, indent=4)}")
+            return result
         except requests.exceptions.RequestException as e:
-            logging.error(f"VRA.delete_vra_cluster: Failed to delete VRA cluster for identifier {cluster_identifier}: {e}")
+            if e.response is not None:
+                logging.error(f"HTTPError: {e.response.status_code} - {e.response.reason}")
+                try:
+                    error_details = e.response.json()
+                    logging.error(f"Error Message: {error_details.get('Message', 'No detailed error message available')}")
+                except ValueError:
+                    logging.error(f"Response content: {e.response.text}")
+            else:
+                logging.error("HTTPError occurred with no response attached.")
             raise
 
-    def update_vra_cluster(self, cluster_identifier, payload):
-        logging.info(f"VRA.update_vra_cluster: Updating VRA cluster for identifier: {cluster_identifier}...")
+    def update_vra_cluster(self, cluster_identifier: str, payload: Dict) -> Dict:
+        """
+        Update a VRA cluster configuration.
+
+        Args:
+            cluster_identifier: The identifier of the cluster to update
+            payload: The update configuration
+
+        Returns:
+            Dict: The update result
+
+        Raises:
+            requests.exceptions.RequestException: If the API request fails
+        """
+        logging.info(f"VRA.update_vra_cluster(zvm_address={self.client.zvm_address}, cluster_identifier={cluster_identifier})")
+        logging.debug(f"VRA.update_vra_cluster payload: {json.dumps(payload, indent=4)}")
         url = f"https://{self.client.zvm_address}/v1/vras/clusters/{cluster_identifier}"
         headers = {
             'Content-Type': 'application/json',
@@ -138,14 +320,33 @@ class VRA:
         try:
             response = requests.put(url, headers=headers, json=payload, verify=self.client.verify_certificate)
             response.raise_for_status()
-            logging.info(f"VRA.update_vra_cluster: Successfully updated VRA cluster for identifier: {cluster_identifier}.")
-            return response.json()
+            result = response.json()
+            logging.info(f"Successfully updated VRA cluster with identifier: {cluster_identifier}")
+            logging.debug(f"VRA.update_vra_cluster result: {json.dumps(result, indent=4)}")
+            return result
         except requests.exceptions.RequestException as e:
-            logging.error(f"VRA.update_vra_cluster: Failed to update VRA cluster for identifier {cluster_identifier}: {e}")
+            if e.response is not None:
+                logging.error(f"HTTPError: {e.response.status_code} - {e.response.reason}")
+                try:
+                    error_details = e.response.json()
+                    logging.error(f"Error Message: {error_details.get('Message', 'No detailed error message available')}")
+                except ValueError:
+                    logging.error(f"Response content: {e.response.text}")
+            else:
+                logging.error("HTTPError occurred with no response attached.")
             raise
 
-    def cleanup_vras(self):
-        logging.info("VRA.cleanup_vras: Cleaning up VRAs...")
+    def cleanup_vras(self) -> Dict:
+        """
+        Clean up VRAs.
+
+        Returns:
+            Dict: The cleanup result
+
+        Raises:
+            requests.exceptions.RequestException: If the API request fails
+        """
+        logging.info(f"VRA.cleanup_vras(zvm_address={self.client.zvm_address})")
         url = f"https://{self.client.zvm_address}/v1/vras/cleanup"
         headers = {
             'Content-Type': 'application/json',
@@ -154,14 +355,36 @@ class VRA:
         try:
             response = requests.delete(url, headers=headers, verify=self.client.verify_certificate)
             response.raise_for_status()
-            logging.info("VRA.cleanup_vras: Successfully cleaned up VRAs.")
-            return response.json()
+            result = response.json()
+            logging.info("Successfully cleaned up VRAs")
+            logging.debug(f"VRA.cleanup_vras result: {json.dumps(result, indent=4)}")
+            return result
         except requests.exceptions.RequestException as e:
-            logging.error(f"VRA.cleanup_vras: Failed to clean up VRAs: {e}")
+            if e.response is not None:
+                logging.error(f"HTTPError: {e.response.status_code} - {e.response.reason}")
+                try:
+                    error_details = e.response.json()
+                    logging.error(f"Error Message: {error_details.get('Message', 'No detailed error message available')}")
+                except ValueError:
+                    logging.error(f"Response content: {e.response.text}")
+            else:
+                logging.error("HTTPError occurred with no response attached.")
             raise
 
-    def upgrade_vra(self, vra_identifier):
-        logging.info(f"VRA.upgrade_vra: Upgrading VRA for identifier: {vra_identifier}...")
+    def upgrade_vra(self, vra_identifier: str) -> Dict:
+        """
+        Upgrade a specific VRA.
+
+        Args:
+            vra_identifier: The identifier of the VRA to upgrade
+
+        Returns:
+            Dict: The upgrade result
+
+        Raises:
+            requests.exceptions.RequestException: If the API request fails
+        """
+        logging.info(f"VRA.upgrade_vra(zvm_address={self.client.zvm_address}, vra_identifier={vra_identifier})")
         url = f"https://{self.client.zvm_address}/v1/vras/{vra_identifier}/upgrade"
         headers = {
             'Content-Type': 'application/json',
@@ -170,14 +393,36 @@ class VRA:
         try:
             response = requests.post(url, headers=headers, verify=self.client.verify_certificate)
             response.raise_for_status()
-            logging.info(f"VRA.upgrade_vra: Successfully upgraded VRA for identifier: {vra_identifier}.")
-            return response.json()
+            result = response.json()
+            logging.info(f"Successfully initiated upgrade for VRA with identifier: {vra_identifier}")
+            logging.debug(f"VRA.upgrade_vra result: {json.dumps(result, indent=4)}")
+            return result
         except requests.exceptions.RequestException as e:
-            logging.error(f"VRA.upgrade_vra: Failed to upgrade VRA for identifier {vra_identifier}: {e}")
+            if e.response is not None:
+                logging.error(f"HTTPError: {e.response.status_code} - {e.response.reason}")
+                try:
+                    error_details = e.response.json()
+                    logging.error(f"Error Message: {error_details.get('Message', 'No detailed error message available')}")
+                except ValueError:
+                    logging.error(f"Response content: {e.response.text}")
+            else:
+                logging.error("HTTPError occurred with no response attached.")
             raise
 
-    def get_vra_cluster_settings(self, cluster_identifier):
-        logging.info(f"VRA.get_vra_cluster_settings: Fetching VRA cluster settings for identifier: {cluster_identifier}...")
+    def get_vra_cluster_settings(self, cluster_identifier: str) -> Dict:
+        """
+        Get settings for a specific VRA cluster.
+
+        Args:
+            cluster_identifier: The identifier of the cluster to get settings for
+
+        Returns:
+            Dict: The cluster settings
+
+        Raises:
+            requests.exceptions.RequestException: If the API request fails
+        """
+        logging.info(f"VRA.get_vra_cluster_settings(zvm_address={self.client.zvm_address}, cluster_identifier={cluster_identifier})")
         url = f"https://{self.client.zvm_address}/v1/vras/clusters/{cluster_identifier}/settings"
         headers = {
             'Content-Type': 'application/json',
@@ -186,14 +431,38 @@ class VRA:
         try:
             response = requests.get(url, headers=headers, verify=self.client.verify_certificate)
             response.raise_for_status()
-            logging.info(f"VRA.get_vra_cluster_settings: Successfully retrieved VRA cluster settings for identifier: {cluster_identifier}.")
-            return response.json()
+            result = response.json()
+            logging.info(f"Successfully retrieved VRA cluster settings for identifier: {cluster_identifier}")
+            logging.debug(f"VRA.get_vra_cluster_settings result: {json.dumps(result, indent=4)}")
+            return result
         except requests.exceptions.RequestException as e:
-            logging.error(f"VRA.get_vra_cluster_settings: Failed to get VRA cluster settings for identifier {cluster_identifier}: {e}")
+            if e.response is not None:
+                logging.error(f"HTTPError: {e.response.status_code} - {e.response.reason}")
+                try:
+                    error_details = e.response.json()
+                    logging.error(f"Error Message: {error_details.get('Message', 'No detailed error message available')}")
+                except ValueError:
+                    logging.error(f"Response content: {e.response.text}")
+            else:
+                logging.error("HTTPError occurred with no response attached.")
             raise
 
-    def create_vra_cluster_settings(self, cluster_identifier, payload):
-        logging.info(f"VRA.create_vra_cluster_settings: Creating VRA cluster settings for identifier: {cluster_identifier}...")
+    def create_vra_cluster_settings(self, cluster_identifier: str, payload: Dict) -> Dict:
+        """
+        Create settings for a VRA cluster.
+
+        Args:
+            cluster_identifier: The identifier of the cluster to create settings for
+            payload: The cluster settings configuration
+
+        Returns:
+            Dict: The creation result
+
+        Raises:
+            requests.exceptions.RequestException: If the API request fails
+        """
+        logging.info(f"VRA.create_vra_cluster_settings(zvm_address={self.client.zvm_address}, cluster_identifier={cluster_identifier})")
+        logging.debug(f"VRA.create_vra_cluster_settings payload: {json.dumps(payload, indent=4)}")
         url = f"https://{self.client.zvm_address}/v1/vras/clusters/{cluster_identifier}/settings"
         headers = {
             'Content-Type': 'application/json',
@@ -202,14 +471,33 @@ class VRA:
         try:
             response = requests.post(url, headers=headers, json=payload, verify=self.client.verify_certificate)
             response.raise_for_status()
-            logging.info(f"VRA.create_vra_cluster_settings: Successfully created VRA cluster settings for identifier: {cluster_identifier}.")
-            return response.json()
+            result = response.json()
+            logging.info(f"Successfully created VRA cluster settings for identifier: {cluster_identifier}")
+            logging.debug(f"VRA.create_vra_cluster_settings result: {json.dumps(result, indent=4)}")
+            return result
         except requests.exceptions.RequestException as e:
-            logging.error(f"VRA.create_vra_cluster_settings: Failed to create VRA cluster settings for identifier {cluster_identifier}: {e}")
+            if e.response is not None:
+                logging.error(f"HTTPError: {e.response.status_code} - {e.response.reason}")
+                try:
+                    error_details = e.response.json()
+                    logging.error(f"Error Message: {error_details.get('Message', 'No detailed error message available')}")
+                except ValueError:
+                    logging.error(f"Response content: {e.response.text}")
+            else:
+                logging.error("HTTPError occurred with no response attached.")
             raise
 
-    def list_vra_statuses(self):
-        logging.info("VRA.list_vra_statuses: Fetching VRA statuses...")
+    def list_vra_statuses(self) -> List[Dict]:
+        """
+        List all VRA statuses.
+
+        Returns:
+            List[Dict]: List of VRA statuses
+
+        Raises:
+            requests.exceptions.RequestException: If the API request fails
+        """
+        logging.info(f"VRA.list_vra_statuses(zvm_address={self.client.zvm_address})")
         url = f"https://{self.client.zvm_address}/v1/vras/statuses"
         headers = {
             'Content-Type': 'application/json',
@@ -218,14 +506,33 @@ class VRA:
         try:
             response = requests.get(url, headers=headers, verify=self.client.verify_certificate)
             response.raise_for_status()
-            logging.info("VRA.list_vra_statuses: Successfully retrieved VRA statuses.")
-            return response.json()
+            result = response.json()
+            logging.info(f"Successfully retrieved VRA statuses")
+            logging.debug(f"VRA.list_vra_statuses result: {json.dumps(result, indent=4)}")
+            return result
         except requests.exceptions.RequestException as e:
-            logging.error(f"VRA.list_vra_statuses: Failed to get VRA statuses: {e}")
+            if e.response is not None:
+                logging.error(f"HTTPError: {e.response.status_code} - {e.response.reason}")
+                try:
+                    error_details = e.response.json()
+                    logging.error(f"Error Message: {error_details.get('Message', 'No detailed error message available')}")
+                except ValueError:
+                    logging.error(f"Response content: {e.response.text}")
+            else:
+                logging.error("HTTPError occurred with no response attached.")
             raise
 
-    def list_ip_configuration_types(self):
-        logging.info("VRA.list_ip_configuration_types: Fetching IP configuration types...")
+    def list_ip_configuration_types(self) -> List[Dict]:
+        """
+        List all IP configuration types.
+
+        Returns:
+            List[Dict]: List of IP configuration types
+
+        Raises:
+            requests.exceptions.RequestException: If the API request fails
+        """
+        logging.info(f"VRA.list_ip_configuration_types(zvm_address={self.client.zvm_address})")
         url = f"https://{self.client.zvm_address}/v1/vras/ipconfigurationtypes"
         headers = {
             'Content-Type': 'application/json',
@@ -234,14 +541,36 @@ class VRA:
         try:
             response = requests.get(url, headers=headers, verify=self.client.verify_certificate)
             response.raise_for_status()
-            logging.info("VRA.list_ip_configuration_types: Successfully retrieved IP configuration types.")
-            return response.json()
+            result = response.json()
+            logging.info("Successfully retrieved IP configuration types")
+            logging.debug(f"VRA.list_ip_configuration_types result: {json.dumps(result, indent=4)}")
+            return result
         except requests.exceptions.RequestException as e:
-            logging.error(f"VRA.list_ip_configuration_types: Failed to get IP configuration types: {e}")
+            if e.response is not None:
+                logging.error(f"HTTPError: {e.response.status_code} - {e.response.reason}")
+                try:
+                    error_details = e.response.json()
+                    logging.error(f"Error Message: {error_details.get('Message', 'No detailed error message available')}")
+                except ValueError:
+                    logging.error(f"Response content: {e.response.text}")
+            else:
+                logging.error("HTTPError occurred with no response attached.")
             raise
 
-    def list_potential_recovery_vras(self, vra_identifier):
-        logging.info(f"VRA.list_potential_recovery_vras: Fetching potential recovery VRAs for identifier: {vra_identifier}...")
+    def list_potential_recovery_vras(self, vra_identifier: str) -> List[Dict]:
+        """
+        List potential recovery VRAs for a specific VRA.
+
+        Args:
+            vra_identifier: The identifier of the VRA to get potential recovery VRAs for
+
+        Returns:
+            List[Dict]: List of potential recovery VRAs
+
+        Raises:
+            requests.exceptions.RequestException: If the API request fails
+        """
+        logging.info(f"VRA.list_potential_recovery_vras(zvm_address={self.client.zvm_address}, vra_identifier={vra_identifier})")
         url = f"https://{self.client.zvm_address}/v1/vras/{vra_identifier}/changerecoveryvra/potentials"
         headers = {
             'Content-Type': 'application/json',
@@ -250,14 +579,38 @@ class VRA:
         try:
             response = requests.get(url, headers=headers, verify=self.client.verify_certificate)
             response.raise_for_status()
-            logging.info(f"VRA.list_potential_recovery_vras: Successfully retrieved potential recovery VRAs for identifier: {vra_identifier}.")
-            return response.json()
+            result = response.json()
+            logging.info(f"Successfully retrieved potential recovery VRAs for identifier: {vra_identifier}")
+            logging.debug(f"VRA.list_potential_recovery_vras result: {json.dumps(result, indent=4)}")
+            return result
         except requests.exceptions.RequestException as e:
-            logging.error(f"VRA.list_potential_recovery_vras: Failed to get potential recovery VRAs for identifier {vra_identifier}: {e}")
+            if e.response is not None:
+                logging.error(f"HTTPError: {e.response.status_code} - {e.response.reason}")
+                try:
+                    error_details = e.response.json()
+                    logging.error(f"Error Message: {error_details.get('Message', 'No detailed error message available')}")
+                except ValueError:
+                    logging.error(f"Response content: {e.response.text}")
+            else:
+                logging.error("HTTPError occurred with no response attached.")
             raise
 
-    def execute_recovery_vra_change(self, vra_identifier, payload):
-        logging.info(f"VRA.execute_recovery_vra_change: Executing recovery VRA change for identifier: {vra_identifier}...")
+    def execute_recovery_vra_change(self, vra_identifier: str, payload: Dict) -> Dict:
+        """
+        Execute a recovery VRA change for a specific VRA.
+
+        Args:
+            vra_identifier: The identifier of the VRA to change recovery VRA for
+            payload: The change configuration
+
+        Returns:
+            Dict: The execution result
+
+        Raises:
+            requests.exceptions.RequestException: If the API request fails
+        """
+        logging.info(f"VRA.execute_recovery_vra_change(zvm_address={self.client.zvm_address}, vra_identifier={vra_identifier})")
+        logging.debug(f"VRA.execute_recovery_vra_change payload: {json.dumps(payload, indent=4)}")
         url = f"https://{self.client.zvm_address}/v1/vras/{vra_identifier}/changerecoveryvra/execute"
         headers = {
             'Content-Type': 'application/json',
@@ -266,10 +619,20 @@ class VRA:
         try:
             response = requests.post(url, headers=headers, json=payload, verify=self.client.verify_certificate)
             response.raise_for_status()
-            logging.info(f"VRA.execute_recovery_vra_change: Successfully executed recovery VRA change for identifier: {vra_identifier}.")
-            return response.json()
+            result = response.json()
+            logging.info(f"Successfully executed recovery VRA change for identifier: {vra_identifier}")
+            logging.debug(f"VRA.execute_recovery_vra_change result: {json.dumps(result, indent=4)}")
+            return result
         except requests.exceptions.RequestException as e:
-            logging.error(f"VRA.execute_recovery_vra_change: Failed to execute recovery VRA change for identifier {vra_identifier}: {e}")
+            if e.response is not None:
+                logging.error(f"HTTPError: {e.response.status_code} - {e.response.reason}")
+                try:
+                    error_details = e.response.json()
+                    logging.error(f"Error Message: {error_details.get('Message', 'No detailed error message available')}")
+                except ValueError:
+                    logging.error(f"Response content: {e.response.text}")
+            else:
+                logging.error("HTTPError occurred with no response attached.")
             raise
 
     def validate_recovery_vra_change(self, vra_identifier, payload):

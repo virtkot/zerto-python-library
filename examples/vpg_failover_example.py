@@ -314,6 +314,12 @@ def main():
 
         input("Press Enter to start parallel failover tests for both VPGs...")
         
+        # add checkpoint both VPGs
+        cp1 = client1.vpgs.create_checkpoint(vpg_name=vpg_name_1, checkpoint_name="Checkpoint1")
+        logging.info(f"Checkpoint 1 created successfully: {cp1}")
+        cp2 = client1.vpgs.create_checkpoint(vpg_name=vpg_name_2, checkpoint_name="Checkpoint2")
+        logging.info(f"Checkpoint 2 created successfully: {cp2}")
+
         # Run parallel failover tests
         failover_results = run_parallel_failover_tests(client1, [vpg_name_1, vpg_name_2])
         
