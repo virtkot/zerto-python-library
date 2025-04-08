@@ -9,6 +9,36 @@
 # scripts or documentation, even if the author or Zerto has been advised of the possibility of such damages. 
 # The entire risk arising out of the use or performance of the sample scripts and documentation remains with you.
 
+"""
+Zerto Events Example Script
+
+This script demonstrates how to retrieve and manage events in a Zerto environment.
+
+The script performs the following steps:
+1. Connects to Zerto Virtual Manager (ZVM)
+2. Lists available event types
+3. Lists available event entities
+4. Lists available event categories
+5. Retrieves events from the last hour
+6. Demonstrates filtered event queries
+7. Gets detailed information about specific events
+
+Required Arguments:
+    --zvm_address: ZVM address
+    --client_id: Keycloak client ID
+    --client_secret: Keycloak client secret
+
+Optional Arguments:
+    --ignore_ssl: Ignore SSL certificate verification
+
+Example Usage:
+    python examples/events_example.py \
+        --zvm_address <zvm_address> \
+        --client_id <client_id> \
+        --client_secret <client_secret> \
+        --ignore_ssl
+"""
+
 import sys
 import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))

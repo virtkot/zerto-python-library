@@ -9,6 +9,41 @@
 # scripts or documentation, even if the author or Zerto has been advised of the possibility of such damages. 
 # The entire risk arising out of the use or performance of the sample scripts and documentation remains with you.
 
+"""
+Zerto Peer Sites Management Example Script
+
+This script demonstrates how to manage peer site relationships between Zerto Virtual Managers (ZVMs).
+
+The script performs the following steps:
+1. Connects to two Zerto Virtual Managers (ZVMs)
+2. Lists existing peer sites from site 1
+3. Checks for and removes any existing pairing with site 2
+4. Generates a pairing token at site 2
+5. Pairs site 1 with site 2 using the token
+6. Verifies the pairing by checking the updated peer sites list
+
+Required Arguments:
+    --site1_zvm_address: Site 1 ZVM address
+    --site1_client_id: Site 1 Keycloak client ID
+    --site1_client_secret: Site 1 Keycloak client secret
+    --site2_zvm_address: Site 2 ZVM address
+    --site2_client_id: Site 2 Keycloak client ID
+    --site2_client_secret: Site 2 Keycloak client secret
+
+Optional Arguments:
+    --ignore_ssl: Ignore SSL certificate verification
+
+Example Usage:
+    python examples/peersites_example.py \
+        --site1_zvm_address <zvm1_address> \
+        --site1_client_id <client_id1> \
+        --site1_client_secret <secret1> \
+        --site2_zvm_address <zvm2_address> \
+        --site2_client_id <client_id2> \
+        --site2_client_secret <secret2> \
+        --ignore_ssl
+"""
+
 import sys
 import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))

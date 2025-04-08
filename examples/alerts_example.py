@@ -9,6 +9,49 @@
 # scripts or documentation, even if the author or Zerto has been advised of the possibility of such damages. 
 # The entire risk arising out of the use or performance of the sample scripts and documentation remains with you.
 
+
+"""
+Zerto Alert Management Example Script
+
+This script demonstrates how monitor for specific alerts (VRA0020) and manage them (dismiss/undismiss)
+The script creates a VPG (Virtual Protection Group), powers off a VM, and monitors for the VRA0020 alert.
+
+The script performs the following steps:
+1. Creates a VPG (Virtual Protection Group)
+2. Powers off a VM
+3. Monitors for the VRA0020 alert
+4. Dismisses the alert
+5. Undismisses the alert
+6. Powers on the VM
+
+Required Arguments:
+    --site1_address: Site 1 ZVM address
+    --site1_client_id: Site 1 Keycloak client ID
+    --site1_client_secret: Site 1 Keycloak client secret
+    --site2_address: Site 2 ZVM address
+    --site2_client_id: Site 2 Keycloak client ID
+    --site2_client_secret: Site 2 Keycloak client secret
+    --vcenter1_ip: Site 1 vCenter IP address (temporary, for power operations)
+    --vcenter1_user: Site 1 vCenter username (temporary, for power operations)
+    --vcenter1_password: Site 1 vCenter password (temporary, for power operations)
+
+Optional Arguments:
+    --ignore_ssl: Ignore SSL certificate verification
+
+Example Usage:
+    python examples/alerts_example.py \
+        --site1_address <zvm1_address> \
+        --site1_client_id <client_id1> \
+        --site1_client_secret <secret1> \
+        --site2_address <zvm2_address> \
+        --site2_client_id <client_id2> \
+        --site2_client_secret <secret2> \
+        --vcenter1_ip <vcenter1_ip> \
+        --vcenter1_user <vcenter1_user> \
+        --vcenter1_password <vcenter1_pass> \
+        --ignore_ssl
+"""
+
 import sys
 import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -42,7 +85,7 @@ def setup_clients(args):
     Returns:
         tuple: (client1, client2, local_site1_id, local_site2_id)
     """
-    # Create clients for both sites
+    # Connect to ZVM sites
     client1 = ZVMAClient(
         zvm_address=args.site1_address,
         client_id=args.site1_client_id,
@@ -55,14 +98,13 @@ def setup_clients(args):
         client_secret=args.site2_client_secret,
         verify_certificate=not args.ignore_ssl
     )
-    
-    # Get local site ids
-    local_site1_identifier = client1.localsite.get_local_site().get('SiteIdentifier')
-    logging.info(f"Site 1 Local Site ID: {local_site1_identifier}")
 
-    local_site2_identifier = client2.localsite.get_local_site().get('SiteIdentifier')
-    logging.info(f"Site 2 Local Site ID: {local_site2_identifier}")
-    
+    # Get local site identifiers
+    local_site1 = client1.localsite.get_local_site()
+    local_site2 = client2.localsite.get_local_site()
+    local_site1_identifier = local_site1.get('SiteIdentifier')
+    local_site2_identifier = local_site2.get('SiteIdentifier')
+
     return client1, client2, local_site1_identifier, local_site2_identifier
 
 def construct_vpg_settings(vpg_name, local_site1_identifier, local_site2_identifier, site2_datastore_identifier,
@@ -135,64 +177,52 @@ def main():
         vpg_name_1 = 'VpgTest1'
         vpg_name_2 = 'VpgTest2'
         
-        # Setup clients and get site identifiers
+        # Setup Zerto clients and get site identifiers
         client1, client2, local_site1_identifier, local_site2_identifier = setup_clients(args)
 
-        # Get datastore identifier from site 2
-        site2_datastores = client2.datastores.list_datastores()
-        # logging.info(f"Site 2 Datastores: {json.dumps(site2_datastores, indent=4)}")
-        selected_datastore = next((ds for ds in site2_datastores if ds.get('DatastoreName') == "DS_VM_Right"), None)
+        # Keep vCenter connection for site1 until we replace power operations
+        si1 = connect_to_vcenter(
+            vcenter_ip=args.vcenter1_ip,
+            vcenter_user=args.vcenter1_user,
+            vcenter_password=args.vcenter1_password
+        )
+
+        # Get datastore identifier from site 2 using virtualization_sites API
+        datastores = client2.virtualization_sites.get_virtualization_site_datastores(local_site2_identifier)
+        selected_datastore = next((ds for ds in datastores if ds.get('DatastoreName') == "DS_VM_Right"), None)
         site2_datastore_identifier = selected_datastore.get('DatastoreIdentifier')
         logging.info(f"Site 2 Datastore ID: {site2_datastore_identifier}")
 
+        # Get VRAs from site 2 using virtualization_sites API
+        hosts = client2.virtualization_sites.get_virtualization_site_hosts(local_site2_identifier)
+        logging.info(f"Site 2 Hosts: {json.dumps(hosts, indent=4)}")
+        selected_host = next((host for host in hosts if host.get('VirtualizationHostName') == "192.168.222.2"), None)
+        site2_host_identifier = selected_host.get('HostIdentifier')
+        logging.info(f"Host Identifier: {site2_host_identifier}")
 
-        # Get VRAs from site 2
-        site2_vras = client2.vras.list_vras()
-        # logging.info(f"Site 2 VRAs: {json.dumps(site2_vras, indent=4)}")
-        # Extract host identifier from the first VRA on the list
-        if site2_vras:
-            selected_vra = next((vra for vra in site2_vras if vra.get('VraName') == "Z-VRA-192.168.222.2"), None)
-            site2_host_identifier = selected_vra.get('HostIdentifier')
-            logging.info(f"Host Identifier from the first VRA: {site2_host_identifier}")
-        else:
-            logging.error("No VRAs found on site 2.")
-            return
-
-        # Connect to site1 vCenter
-        si1 = connect_to_vcenter(args.vcenter1_ip, args.vcenter1_user, args.vcenter1_password)
-        
-        
-        # Connect to site2 vCenter
-        si2 = connect_to_vcenter(args.vcenter2_ip, args.vcenter2_user, args.vcenter2_password)
-
-        # List resource pools from site2 vCenter
-        resource_pools = list_resource_pools(si2)
-        logging.info(f"Site 2 Resource Pools: {resource_pools}")
-
-        # Extract resource pool identifier from the first resource pool on the list
+        # List resource pools using virtualization_sites API
+        resource_pools = client2.virtualization_sites.get_virtualization_site_resource_pools(local_site2_identifier)
         if resource_pools:
-            resource_pool_identifier = resource_pools[0].get('Identifier')
-            logging.info(f"Resource Pool Identifier from the first resource pool: {resource_pool_identifier}")
+            resource_pool_identifier = resource_pools[0].get('ResourcePoolIdentifier')
+            logging.info(f"Resource Pool Identifier: {resource_pool_identifier}")
         else:
             logging.error("No resource pools found on site 2.")
             return
 
-        # List networks from site2 vCenter
-        networks_list = list_networks(si2)
-        # Extract network identifier from the first network on the list
-        if networks_list:
-            site2_network_identifier = networks_list[0].get('Identifier')
-            logging.info(f"Network Identifier from the first network: {site2_network_identifier}")
+        # List networks using virtualization_sites API
+        networks = client2.virtualization_sites.get_virtualization_site_networks(local_site2_identifier)
+        if networks:
+            site2_network_identifier = networks[0].get('NetworkIdentifier')
+            logging.info(f"Network Identifier: {site2_network_identifier}")
         else:
             logging.error("No networks found on site 2.")
             return
-        
-        #list folders from site2 vCenter
-        folders = list_folders(si2)
-        # logging.info(f"Site 2 Folders: {json.dumps(folders, indent=4)}")
+
+        # List folders using virtualization_sites API
+        folders = client2.virtualization_sites.get_virtualization_site_folders(local_site2_identifier)
         for folder in folders:
-            if folder.get('Name') == '/':
-                site2_folder_identifier = folder.get('Identifier')
+            if folder.get('FolderName') == '/':
+                site2_folder_identifier = folder.get('FolderIdentifier')
                 logging.info(f"Folder Identifier: {site2_folder_identifier}")
                 break
 
@@ -204,10 +234,16 @@ def main():
         vpg_id = client1.vpgs.create_vpg(basic=basic, journal=journal, recovery=recovery, networks=networks, sync=True)
         logging.info(f"VPG ID: {vpg_id} created successfully.")
 
-        power_on_vm(si1, vm_name="RHEL6-1")
+        # Get VM details using virtualization_sites API
+        vm_name = "RHEL6-1"
+        vms = client1.virtualization_sites.get_virtualization_site_vms(local_site1_identifier)
+        logging.info(f"Site 1 VMs: {json.dumps(vms, indent=4)}")
+        vm = next((v for v in vms if v.get('VmName') == vm_name), None)
+        
+        # Power operations still using vCenter
+        power_off_vm(si1, vm_name="RHEL6-1")
+
         # Add RHEL6-1 VM to VPG1 
-        vm_name = "RHEL6-1"   
-        vm = list_vms_with_details(si1, vm_name=vm_name)
         vm_payload = { 
             "VmIdentifier": vm.get('VMIdentifier'),
             "Recovery": {
@@ -224,9 +260,11 @@ def main():
         task_id = client1.vpgs.add_vm_to_vpg(vpg_name_1, vm_list_payload=vm_payload)
         logging.info(f"Task ID: {task_id} to add VM {vm_name} to {vpg_name_1}.")
 
-        power_off_vm(si1, vm_name="RHEL6-1")
+        # add vm to vpg
+        response = client1.vpgs.add_vm_to_vpg(vpg_id, vm_name=vm_name)
+        logging.info(f"VM {vm_name} added to VPG {vpg_id} successfully. response: {response}")
 
-       # Wait for up to 3 minutes (180 seconds) for specific alert to appear
+        # Wait for up to 3 minutes (180 seconds) for specific alert to appear
         start_time = time.time()
         end_time = start_time + 180  # 3 minutes timeout
         alert_id = None

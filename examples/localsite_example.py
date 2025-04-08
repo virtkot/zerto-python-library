@@ -9,6 +9,38 @@
 # scripts or documentation, even if the author or Zerto has been advised of the possibility of such damages. 
 # The entire risk arising out of the use or performance of the sample scripts and documentation remains with you.
 
+"""
+Zerto Local Site Management Example Script
+
+This script demonstrates how to manage and retrieve information about the local Zerto site.
+
+The script performs the following steps:
+1. Connects to Zerto Virtual Manager (ZVM)
+2. Retrieves local site information
+3. Gets site pairing statuses
+4. Sends usage data to Zerto
+5. Manages login banner settings:
+   - Gets current banner configuration
+   - Sets a new test banner
+   - Verifies the updated settings
+   - Disables the banner
+
+Required Arguments:
+    --zvm_address: ZVM address
+    --client_id: Keycloak client ID
+    --client_secret: Keycloak client secret
+
+Optional Arguments:
+    --ignore_ssl: Ignore SSL certificate verification
+
+Example Usage:
+    python examples/localsite_example.py \
+        --zvm_address <zvm_address> \
+        --client_id <client_id> \
+        --client_secret <client_secret> \
+        --ignore_ssl
+"""
+
 import sys
 import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))

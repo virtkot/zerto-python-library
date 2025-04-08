@@ -11,6 +11,42 @@
 # scripts or documentation, even if the author or Zerto has been advised of the possibility of such damages. 
 # The entire risk arising out of the use or performance of the sample scripts and documentation remains with you.
 
+"""
+Zerto Volumes Example Script
+
+This script demonstrates how to retrieve volume information from Zerto Virtual Manager (ZVM).
+It shows how to list and filter volumes based on different criteria, making it useful for
+volume management and monitoring.
+
+Key Features:
+1. List all volumes in the system
+2. Filter volumes by:
+   - VPG association
+   - Datastore location
+   - Protected VM attachment
+3. Display volume details:
+   - Volume identifiers
+   - Storage information
+   - Protection status
+   - Resource associations
+
+Required Arguments:
+    --zvm_address: Site 1 ZVM address
+    client_id: Site 1 Keycloak client ID
+    client_secret: Site 1 Keycloak client secret
+    --ignore_ssl: Ignore SSL certificate verification (optional)
+
+Example Usage:
+    python examples/volumes_example.py \
+        --zvm_address "192.168.1.100" \
+        client_id "zerto-api" \
+        client_secret "your-secret-here" \
+        --ignore_ssl
+
+Note: This script focuses on volume operations and requires only Site 1 credentials
+since it performs read-only operations on the protected site.
+"""
+
 import sys
 import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))

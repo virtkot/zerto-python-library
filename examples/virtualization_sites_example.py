@@ -9,6 +9,42 @@
 # scripts or documentation, even if the author or Zerto has been advised of the possibility of such damages. 
 # The entire risk arising out of the use or performance of the sample scripts and documentation remains with you.
 
+"""
+Zerto Virtualization Sites Example Script
+
+This script demonstrates how to retrieve and manage virtualization site information from Zerto.
+
+The script performs the following steps:
+1. Connects to Zerto Virtual Manager (ZVM)
+2. Retrieves information about virtualization sites:
+   - Basic site details
+   - Unprotected VMs and vApps
+   - Storage resources (datastores, clusters)
+   - Network configurations
+   - Host information
+   - Cloud resources (networks, subnets, security)
+3. For each site, retrieves detailed information about:
+   - Organization VDCs
+   - Storage policies
+   - Network configurations
+   - Host devices and clusters
+
+Required Arguments:
+    --zvm_address: ZVM address
+    --client_id: Keycloak client ID
+    --client_secret: Keycloak client secret
+
+Optional Arguments:
+    --ignore_ssl: Ignore SSL certificate verification
+
+Example Usage:
+    python examples/virtualization_sites_example.py \
+        --zvm_address <zvm_address> \
+        --client_id <client_id> \
+        --client_secret <client_secret> \
+        --ignore_ssl
+"""
+
 import sys
 import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
