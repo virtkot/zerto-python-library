@@ -110,12 +110,6 @@ def setup_clients(args):
         client_secret=args.client_secret,
         verify_certificate=not args.ignore_ssl
     )
-    # client2 = ZVMAClient(
-    #     zvm_address=args.site2_address,
-    #     client_id=args.site2_client_id,
-    #     client_secret=args.site2_client_secret,
-    #     verify_certificate=not args.ignore_ssl
-    # )
     
     #get all virtualization sites
     virtualization_sites = zvm_client.virtualization_sites.get_virtualization_sites()

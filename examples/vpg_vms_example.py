@@ -8,11 +8,59 @@
 # information, or other pecuniary loss) arising out of the use of or the inability to use the sample 
 # scripts or documentation, even if the author or Zerto has been advised of the possibility of such damages. 
 # The entire risk arising out of the use or performance of the sample scripts and documentation remains with you.
+"""
+Zerto VPG VM Management Example Script
+
+This script demonstrates how to manage Virtual Machines (VMs) within Virtual Protection Groups (VPGs)
+using the Zerto Virtual Manager (ZVM) API. It showcases VPG creation, VM addition/removal, and cleanup.
+
+Key Features:
+1. Site Management:
+   - Connect to protected site
+   - Retrieve local and peer site identifiers
+   - Manage cross-site replication using peer site information
+
+2. VPG Operations:
+   - Create multiple VPGs with custom settings
+   - Add multiple VMs to a VPG
+   - Remove VMs from VPGs
+   - Move VMs between VPGs
+   - Clean up resources
+
+3. Resource Management:
+   - Identify and select peer site datastores, hosts,  networks, folders and resource pools
+   
+Required Arguments:
+    --zvm_address: Protected site ZVM address
+    --client_id: Protected site Keycloak client ID
+    --client_secret: Protected site Keycloak client secret
+    --ignore_ssl: Ignore SSL certificate verification (optional)
+
+Example Usage:
+    python examples/vpg_vms_example.py \
+        --zvm_address "192.168.111.20" \
+        --client_id "zerto-api" \
+        --client_secret "your-secret-here" \
+        --ignore_ssl
+
+Note: This script requires credentials only for the protected site. All recovery site information
+is retrieved using the peer site API, eliminating the need for direct access to the recovery site.
+
+Script Flow:
+1. Connects to protected site ZVM
+2. Gets local and peer site information
+3. Creates first VPG 'VpgTest1'
+4. Adds two VMs (vm1 and vm2) to first VPG
+5. Removes vm1 from first VPG
+6. Creates second VPG 'VpgTest2'
+7. Adds removed VM (vm1) to second VPG
+8. Cleans up by deleting both VPGs
+"""
 
 import logging
 # Configure logging before any other imports or code
 logging.basicConfig(
-    level=logging.DEBUG,
+    level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s'
 )
 
@@ -56,6 +104,8 @@ def main():
     parser.add_argument('--client_id', required=True, help='Site 1 Keycloak client ID')
     parser.add_argument('--client_secret', required=True, help='Site 1 Keycloak client secret')
     parser.add_argument("--ignore_ssl", action="store_true", help="Ignore SSL certificate verification")
+    parser.add_argument("--vm1", required=True, help="Name of first VM to protect")
+    parser.add_argument("--vm2", required=True, help="Name of second VM to protect")
     args = parser.parse_args()
 
     try:
@@ -83,7 +133,7 @@ def main():
         logging.info(f"Site 2 Datastore ID: {peer_datastore_identifier}")
 
         # Fill basic VPG settings info
-        vpg_name = 'VpgTest'
+        vpg_name = 'VpgTest1'
         basic = {
             "Name": vpg_name,
             "VpgType": "Remote",
@@ -185,7 +235,7 @@ def main():
         )
         logging.debug(f"Site 1 VMs: {json.dumps(vms, indent=4)}")
 
-        vms_to_add = ["light-vm1", "SmallCentOS"]
+        vms_to_add = [args.vm1, args.vm2]
         vm_list = []
         for vm in vms:
             logging.info(f"VM: Name={vm.get('VmName')}, VM Identifier={vm.get('VmIdentifier')}")
@@ -203,10 +253,10 @@ def main():
                 task_id = client1.vpgs.add_vm_to_vpg(vpg_name, vm_list_payload=vm_payload)
                 logging.info(f"Task ID: {task_id} to add VM {vm.get('VmName')} to VPG.")
 
-        input(f"Press Enter to remove {vms_to_add[0]} VM from the first VPG...")
+        input(f"Press Enter to remove {args.vm1} VM from the first VPG...")
 
         # Remove first VM from the first VPG
-        vm_to_remove = "light-vm1"
+        vm_to_remove = args.vm1
         vm_identifier_to_remove = None
         for vm in vms:
             if vm.get('VmName') == vm_to_remove:
