@@ -9,6 +9,33 @@
 # scripts or documentation, even if the author or Zerto has been advised of the possibility of such damages. 
 # The entire risk arising out of the use or performance of the sample scripts and documentation remains with you.
 
+"""
+Zerto Datastores Example Script
+
+This script demonstrates how to retrieve and list datastores from a Zerto environment.
+
+The script performs the following steps:
+1. Connects to Zerto Virtual Manager (ZVM)
+2. Gets the local site identifier
+3. Lists all datastores in the site
+4. Gets detailed information about a specific datastore
+
+Required Arguments:
+    --zvm_address: ZVM address
+    --client_id: Keycloak client ID
+    --client_secret: Keycloak client secret
+
+Optional Arguments:
+    --ignore_ssl: Ignore SSL certificate verification
+
+Example Usage:
+    python examples/datastore_example.py \
+        --zvm_address <zvm_address> \
+        --client_id <client_id> \
+        --client_secret <client_secret> \
+        --ignore_ssl
+"""
+
 import sys
 import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -18,7 +45,6 @@ import logging
 import urllib3
 import json
 from zvma import ZVMAClient
-from vcenter import connect_to_vcenter, list_datastores
 
 # Disable SSL warnings
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
@@ -28,9 +54,6 @@ def main():
     parser.add_argument("--zvm_address", required=True, help="ZVM address")
     parser.add_argument('--client_id', required=True, help='Keycloak client ID')
     parser.add_argument('--client_secret', required=True, help='Keycloak client secret')
-    parser.add_argument("--vcenter_address", required=True, help="vCenter address")
-    parser.add_argument("--vcenter_user", required=True, help="vCenter username")
-    parser.add_argument("--vcenter_password", required=True, help="vCenter password")
     parser.add_argument("--ignore_ssl", action="store_true", help="Ignore SSL certificate verification")
     args = parser.parse_args()
 
@@ -50,29 +73,19 @@ def main():
             verify_certificate=not args.ignore_ssl
         )
 
-        # Connect to vCenter
-        logging.info(f"Connecting to vCenter at {args.vcenter_address}")
-        si = connect_to_vcenter(
-            args.vcenter_address,
-            args.vcenter_user,
-            args.vcenter_password
-        )
+        # Get local site identifier
+        local_site = client.localsite.get_local_site()
+        site_identifier = local_site.get('SiteIdentifier')
+        logging.info(f"Local site identifier: {site_identifier}")
 
-        # Get all datastores from vCenter
-        vcenter_datastores = list_datastores(si)
-        logging.info("\nDatastores in vCenter:")
-        for ds in vcenter_datastores:
-            logging.info(f"Name: {ds['Name']}, Identifier: {ds['Identifier']}")
+        # Get datastores using VirtualizationSites API
+        datastores = client.virtualization_sites.get_virtualization_site_datastores(site_identifier)
+        logging.info("\nDatastores in site:")
+        logging.info(json.dumps(datastores, indent=2))
 
-        # Get all datastores from ZVM
-        zvm_datastores = client.datastores.list_datastores()
-        logging.info("\nDatastores in ZVM:")
-        logging.info(json.dumps(zvm_datastores, indent=2))
-
-        # Get specific datastore details
-        if vcenter_datastores:
-            # Get the first datastore identifier from vCenter
-            first_ds_id = vcenter_datastores[0]['Identifier']
+        # Get specific datastore details if any exist
+        if datastores:
+            first_ds_id = datastores[0].get('DatastoreIdentifier')
             logging.info(f"\nGetting details for specific datastore: {first_ds_id}")
             
             ds_details = client.datastores.list_datastores(first_ds_id)

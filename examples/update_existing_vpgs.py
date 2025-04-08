@@ -4,6 +4,45 @@
 # This script is an example script and is not supported under any Zerto support program or service. 
 # The author and Zerto further disclaim all implied warranties including, without limitation, 
 # any implied warranties of merchantability or of fitness for a particular purpose.
+# In no event shall Zerto, its authors or anyone else involved in the creation, 
+# production or delivery of the scripts be liable for any damages whatsoever (including, 
+# without limitation, damages for loss of business profits, business interruption, loss of business 
+# information, or other pecuniary loss) arising out of the use of or the inability to use the sample 
+# scripts or documentation, even if the author or Zerto has been advised of the possibility of such damages. 
+# The entire risk arising out of the use or performance of the sample scripts and documentation remains with you.
+
+"""
+Zerto VPG Bulk Update Example Script
+
+This script demonstrates how to update multiple Virtual Protection Groups (VPGs) settings in bulk.
+
+The script performs the following steps:
+1. Connects to Zerto Virtual Manager (ZVM)
+2. Lists peer sites and their resources:
+   - Available datastores
+   - Available networks
+3. Retrieves current VPG settings for all VPGs
+4. Prompts for new settings:
+   - Target datastore
+   - Failover network
+   - Test network
+5. Updates all VPGs with the new settings after confirmation
+
+Required Arguments:
+    --site1_address: Site 1 ZVM address
+    --site1_client_id: Site 1 Keycloak client ID
+    --site1_client_secret: Site 1 Keycloak client secret
+
+Optional Arguments:
+    --ignore_ssl: Ignore SSL certificate verification
+
+Example Usage:
+    python examples/update_existing_vpgs.py \
+        --site1_address <zvm_address> \
+        --site1_client_id <client_id> \
+        --site1_client_secret <client_secret> \
+        --ignore_ssl
+"""
 
 import argparse
 import logging

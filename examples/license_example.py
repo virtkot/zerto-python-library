@@ -9,6 +9,36 @@
 # scripts or documentation, even if the author or Zerto has been advised of the possibility of such damages. 
 # The entire risk arising out of the use or performance of the sample scripts and documentation remains with you.
 
+"""
+Zerto License Management Example Script
+
+This script demonstrates how to manage Zerto licenses through the API.
+
+The script performs the following steps:
+1. Connects to Zerto Virtual Manager (ZVM)
+2. Retrieves current license information
+3. Updates the license if a new key is provided
+4. Verifies the updated license details
+5. Optionally can delete the license (commented out for safety)
+
+Required Arguments:
+    --zvm_address: ZVM address
+    --client_id: Keycloak client ID
+    --client_secret: Keycloak client secret
+
+Optional Arguments:
+    --license_key: License key to add/update
+    --ignore_ssl: Ignore SSL certificate verification
+
+Example Usage:
+    python examples/license_example.py \
+        --zvm_address <zvm_address> \
+        --client_id <client_id> \
+        --client_secret <client_secret> \
+        --license_key <license_key> \
+        --ignore_ssl
+"""
+
 import sys
 import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))

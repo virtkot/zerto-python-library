@@ -11,6 +11,48 @@
 # scripts or documentation, even if the author or Zerto has been advised of the possibility of such damages. 
 # The entire risk arising out of the use or performance of the sample scripts and documentation remains with you.
 
+"""
+Zerto Virtual Machines Example Script
+
+This script demonstrates how to manage and retrieve information about protected virtual machines in Zerto.
+
+The script performs the following steps:
+1. Connects to Zerto Virtual Manager (ZVM)
+2. Gets site information and resources:
+   - Local and peer site details
+   - Available datastores
+   - Network configurations
+3. Demonstrates VM operations:
+   - Lists all protected VMs
+   - Gets detailed information for specific VMs
+   - Filters VMs by VPG name
+   - Manages VM restore points:
+     * Lists available checkpoints
+     * Gets points in time
+     * Retrieves recovery statistics
+4. Shows VM restore capabilities:
+   - Configures restore settings
+   - Handles network and storage mappings
+   - Manages restore operations
+
+Required Arguments:
+    --zvm_address: ZVM address
+    --client_id: Keycloak client ID
+    --client_secret: Keycloak client secret
+
+Optional Arguments:
+    --ignore_ssl: Ignore SSL certificate verification
+
+Example Usage:
+    python examples/vms_example.py \
+        --zvm_address <zvm_address> \
+        --client_id <client_id> \
+        --client_secret <client_secret> \
+        --ignore_ssl
+
+Note: VM restore functionality is commented out in this example as it may return a 500 error.
+"""
+
 # NOTE
 # this example assumes that at least one VPG exists on the ZVM and protected VMs exist in the VPG
 # the vm restore is commnted out as it fails with a 500 
