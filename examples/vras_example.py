@@ -154,35 +154,49 @@ def create_vra_with_selection(client: ZVMAClient, vra_number: int) -> Dict:
     datastore = select_from_list(datastores, "Datastore")
     network = select_from_list(networks, "Network")
 
-    # Create VRA configuration
-    vra_config = {
-        "hostIdentifier": host['HostIdentifier'],
-        "datastoreIdentifier": datastore['DatastoreIdentifier'],
-        "networkIdentifier": network['NetworkIdentifier'],
-        "hostRootPassword": input("\nEnter host root password: "),
-        "memoryInGb": 3,
-        "groupName": f"VRA_Group{vra_number}",
-        "vraNetworkDataApi": {
-            "vraIPConfigurationTypeApi": "Static",
-            "vraIPAddress": f"192.168.111.{30 + vra_number - 1}",
-            "vraIPAddressRangeEnd": "",
-            "subnetMask": "255.255.255.0",
-            "defaultGateway": "192.168.111.254"
-        },
-        "usePublicKeyInsteadOfCredentials": False,
-        "populatePostInstallation": True,
-        "numOfCpus": 1,
-        "vmInstanceType": ""
-    }
+    while True:
+        # Let user customize IP address
+        default_ip = f"192.168.111.{30 + vra_number - 1}"
+        custom_ip = input(f"\nEnter VRA IP address (press Enter to use default {default_ip}): ").strip()
+        vra_ip = custom_ip if custom_ip else default_ip
 
-    # Create VRA
-    print(f"\nCreating VRA {vra_number} with configuration:")
-    print(json.dumps(vra_config, indent=2))
-    if get_user_confirmation("Proceed with VRA creation?"):
-        result = client.vras.create_vra(vra_config)
-        print(f"VRA creation initiated: {json.dumps(result, indent=2)}")
-        return result
-    return None
+        # Create VRA configuration
+        vra_config = {
+            "hostIdentifier": host['HostIdentifier'],
+            "datastoreIdentifier": datastore['DatastoreIdentifier'],
+            "networkIdentifier": network['NetworkIdentifier'],
+            "hostRootPassword": input("\nEnter host root password: "),
+            "memoryInGb": 3,
+            "groupName": f"VRA_Group{vra_number}",
+            "vraNetworkDataApi": {
+                "vraIPConfigurationTypeApi": "Static",
+                "vraIPAddress": vra_ip,
+                "vraIPAddressRangeEnd": "",
+                "subnetMask": "255.255.255.0",
+                "defaultGateway": "192.168.111.254"
+            },
+            "usePublicKeyInsteadOfCredentials": False,
+            "populatePostInstallation": True,
+            "numOfCpus": 1,
+            "vmInstanceType": ""
+        }
+
+        # Create VRA
+        print(f"\nCreating VRA {vra_number} with configuration:")
+        print(json.dumps(vra_config, indent=2))
+        
+        response = input("\nProceed with VRA creation? (yes/no/edit): ").lower().strip()
+        if response in ['yes', 'y']:
+            result = client.vras.create_vra(vra_config)
+            print(f"VRA creation initiated: {json.dumps(result, indent=2)}")
+            return result
+        elif response in ['no', 'n']:
+            return None
+        elif response in ['edit', 'e']:
+            print("\nRestarting VRA configuration...")
+            continue
+        else:
+            print("Please answer 'yes', 'no', or 'edit'")
 
 def main():
     parser = argparse.ArgumentParser(description="VRA Management Example")
