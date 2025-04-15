@@ -11,106 +11,132 @@ This library provides a comprehensive Python interface to manage and automate Ze
 - Managing licenses
 - Configuring service profiles
 - Handling encryption detection
-- Managing datastores
+- Managing datastores and VRAs
 - Working with server date/time settings
+- Managing ZORGs (Zerto Organizations)
+
+## Installation
+
+git clone https://github.com/your-repo/zerto-python-library.git
+cd zerto-python-library
+pip install -r requirements.txt
+
+## Dependencies
+
+- requests
+- urllib3
+- logging
+- json
+- typing
 
 ## Library Structure
 
 The library is organized into several modules:
 
-- `zvma/` - Core library components
-  - `checkpoints.py` - Checkpoint management
+- `zvml/` - Core library components
+  - `alerts.py` - Alert management and monitoring
+  - `checkpoints.py` - Checkpoint operations and management
   - `common.py` - Common enums and utilities
   - `encryptiondetection.py` - Encryption detection functionality
   - `license.py` - License management
+  - `localsite.py` - Local site operations
+  - `recovery_reports.py` - Recovery reporting functionality
   - `server_date_time.py` - Server time operations
   - `service_profiles.py` - Service profile configuration
+  - `tasks.py` - Task management and monitoring
+  - `virtualization_sites.py` - Site management operations
+  - `vpgs.py` - VPG operations and management
+  - `vras.py` - VRA deployment and management
+  - `zorgs.py` - ZORG operations
 
-## Features
+## Examples
 
-- **Authentication**: Secure authentication using client ID and secret
-- **SSL Verification**: Optional SSL certificate verification
-- **Comprehensive API Coverage**: Support for all major Zerto operations
-- **Error Handling**: Robust error handling and logging
-- **Parallel Operations**: Support for parallel failover testing and other operations
-- **Monitoring**: Real-time status monitoring and reporting
-- **Resource Management**: Complete control over VPGs, VMs, and infrastructure resources
+Each example script demonstrates specific functionality:
+
+### Alert Management
+`alerts_example.py` - Simple alert monitoring and management (list, dismiss, undismiss):
+
+python examples/alerts_example.py \
+--zvm_address "192.168.111.20" \
+--client_id "zerto-api" \
+--client_secret "your-secret-here" \
+--ignore_ssl
+
+### VPG Management
+`vpg_vms_example.py` - VPG creation and VM management between VPGs:
+
+python examples/vpg_vms_example.py \
+--zvm_address "192.168.111.20" \
+--client_id "zerto-api" \
+--client_secret "your-secret-here" \
+--ignore_ssl
+
+### VPG Failover Testing
+`vpg_failover_example.py` - Complete VPG lifecycle including failover testing:
+
+python examples/vpg_failover_example.py \
+--zvm_address "192.168.111.20" \
+--client_id "zerto-api" \
+--client_secret "your-secret-here" \
+--ignore_ssl
+
+### VRA Management
+`vras_example.py` - Interactive VRA deployment and management:
+
+python examples/vras_example.py \
+--zvm_address "192.168.111.20" \
+--client_id "zerto-api" \
+--client_secret "your-secret-here" \
+--ignore_ssl
+
+### ZORG Management
+`zorgs_example.py` - ZORG information retrieval and management:
+
+python examples/zorgs_example.py \
+--zvm_address "192.168.111.20" \
+--client_id "zerto-api" \
+--client_secret "your-secret-here" \
+--ignore_ssl
 
 ## Requirements
 
 - Python 3.6+
 - Zerto Virtual Replication environment
-- vSphere environment
-- Network access to ZVM and vCenter servers
+- Network access to ZVM server
+- Keycloak authentication credentials
 
 ## Getting Started
 
 1. Clone the repository
 2. Install required dependencies
-3. Configure your Zerto environment
+3. Configure your Zerto environment credentials
 4. Run the example scripts to understand basic operations
 5. Integrate the library into your automation workflows
 
+## Authentication
+
+The library uses Keycloak authentication. You'll need:
+- ZVM server address
+- Client ID
+- Client Secret
+- Optional: SSL verification settings
+
+## Error Handling
+
+The library includes comprehensive error handling and logging:
+- Input validation
+- Error status checking
+- Detailed error messages
+- Operation status logging
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+## License
+
+This project includes a legal disclaimer. See the header of each file for details.
+
 For detailed API documentation and examples, please refer to the individual module files and example scripts.
 
-## Examples
-
-The library includes several example scripts demonstrating common use cases:
-
-### VPG Command Line
-Create and manage Virtual Protection Groups:
-This example demonstrates:
-- Creating VPGs with multiple VMs
-- Adding and removing VMs from VPGs
-- Managing VM protection settings
-- Monitoring VPG and VM status
-
-cd examples
-
-python3 ./vpg_example.py \
---site1_address <site1_zvm_ip> \
---site1_client_id <site1_client_id> \
---site1_client_secret <site1_client_secret> \
---vcenter1_ip <site1_vcenter_ip> \
---vcenter1_user <site1_vcenter_user> \
---vcenter1_password <site1_vcenter_password> \
---site2_address <site2_zvm_ip> \
---site2_client_id <site2_client_id> \
---site2_client_secret <site2_client_secret> \
---vcenter2_ip <site2_vcenter_ip> \
---vcenter2_user <site2_vcenter_user> \
---vcenter2_password <site2_vcenter_password> \
---ignore_ssl
-
-### Alerts Command Line
-Monitor and manage Zerto alerts:
-
-bash
-python3 ./alerts_example.py \
---site1_address <site1_zvm_ip> \
---site1_client_id <site1_client_id> \
---site1_client_secret <site1_client_secret> \
---vcenter1_ip <site1_vcenter_ip> \
---vcenter1_user <site1_vcenter_user> \
---vcenter1_password <site1_vcenter_password> \
---site2_address <site2_zvm_ip> \
---site2_client_id <site2_client_id> \
---site2_client_secret <site2_client_secret> \
---vcenter2_ip <site2_vcenter_ip> \
---vcenter2_user <site2_vcenter_user> \
---vcenter2_password <site2_vcenter_password> \
---ignore_ssl
-
-
-### Datastore Command Line
-Manage and monitor datastores:
-
-bash
-python3 ./datastore_example.py \
---zvm_address <zvm_ip> \
---client_id <client_id> \
---client_secret <client_secret> \
---vcenter_address <vcenter_ip> \
---vcenter_user <vcenter_user> \
---vcenter_password <vcenter_password> \
---ignore_ssl
+  

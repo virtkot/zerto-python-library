@@ -43,6 +43,7 @@ from .service_profiles import ServiceProfiles
 from .server_date_time import ServerDateTime
 from .virtualization_sites import VirtualizationSites
 from .volumes import Volumes
+from .tweaks import Tweaks
 # Disable SSL warnings for self-signed certificates
 context = ssl._create_unverified_context()
 
@@ -77,6 +78,7 @@ class ZVMAClient:
         self.server_date_time = ServerDateTime(self)
         self.virtualization_sites = VirtualizationSites(self)
         self.volumes = Volumes(self)
+        self.tweaks = Tweaks(self)
     def __get_keycloak_token(self):
         logging.debug(f'__get_keycloak_token(zvm_address={self.zvm_address})')
         keycloak_uri = f"https://{self.zvm_address}/auth/realms/zerto/protocol/openid-connect/token"

@@ -65,6 +65,13 @@ class ZertoTaskTypes(Enum):
                 return member.name
         return None
 
+    @classmethod
+    def get_value_by_name(cls, name):
+        for member in cls:
+            if member.name == name:
+                return member.value
+        return None
+
 class ZertoTaskStates(Enum):
     FirstUnusedValue = 0
     InProgress = 1
@@ -80,6 +87,13 @@ class ZertoTaskStates(Enum):
         for member in cls:
             if member.value == value:
                 return member.name
+        return None
+
+    @classmethod
+    def get_value_by_name(cls, name):
+        for member in cls:
+            if member.name == name:
+                return member.value
         return None
 
 class ZertoVPGStatus(Enum):
@@ -98,6 +112,13 @@ class ZertoVPGStatus(Enum):
         for member in cls:
             if member.value == value:
                 return member.name
+        return None
+    
+    @classmethod
+    def get_value_by_name(cls, name):
+        for member in cls:
+            if member.name == name:
+                return member.value
         return None
 
 class ZertoVPGSubstatus(Enum):
@@ -142,6 +163,13 @@ class ZertoVPGSubstatus(Enum):
                 return member.name
         return None
 
+    @classmethod
+    def get_value_by_name(cls, name):
+        for member in cls:
+            if member.name == name:
+                return member.value
+        return None
+
 class ZertoProtectedSiteType(Enum):
     VCVpg = 0
     VCvApp = 1
@@ -156,6 +184,13 @@ class ZertoProtectedSiteType(Enum):
                 return member.name
         return None
 
+    @classmethod
+    def get_value_by_name(cls, name):
+        for member in cls:
+            if member.name == name:
+                return member.value
+        return None
+
 class ZertoRecoverySiteType(Enum):
     VCVpg = 0
     VCvApp = 1
@@ -168,6 +203,13 @@ class ZertoRecoverySiteType(Enum):
         for member in cls:
             if member.value == value:
                 return member.name
+        return None
+
+    @classmethod
+    def get_value_by_name(cls, name):
+        for member in cls:
+            if member.name == name:
+                return member.value
         return None
 
 class ZertoVPGPriority(Enum):
@@ -536,6 +578,18 @@ class ZertoVPGSettingsBackupSchedulerDOW(Enum):
 class ZertoVPGSettingsBackupSchedulerPeriod(Enum):
     Daily = 0
     Weekly = 1
+
+    @classmethod
+    def get_name_by_value(cls, value):
+        for member in cls:
+            if member.value == value:
+                return member.name
+        return None
+
+class ZertoTweakType(Enum):
+    ZVM = "zvm-tweak"
+    VRA = "vra-tweak"
+    Frontend = "frontend-tweak"
 
     @classmethod
     def get_name_by_value(cls, value):

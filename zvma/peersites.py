@@ -50,7 +50,7 @@ class PeerSites:
             raise
 
         except Exception as e:
-            logging.error(f"Unexpected error while generating peer site pairing token: {e}")
+            logging.error(f"Unexpected error: {e}")
             raise
 
     def pair_site(self, hostname, token, port=9071, sync=True):
@@ -147,7 +147,7 @@ class PeerSites:
             raise
 
         except Exception as e:
-            logging.error(f"Unexpected error while generating peer site pairing token: {e}")
+            logging.error(f"Unexpected error: {e}")
             raise
 
     def get_pairing_statuses(self):
@@ -181,7 +181,7 @@ class PeerSites:
             raise
 
         except Exception as e:
-            logging.error(f"Unexpected error while generating peer site pairing token: {e}")
+            logging.error(f"Unexpected error: {e}")
             raise
 
     def generate_token(self):
@@ -215,7 +215,7 @@ class PeerSites:
             raise
 
         except Exception as e:
-            logging.error(f"Unexpected error while generating peer site pairing token: {e}")
+            logging.error(f"Unexpected error: {e}")
             raise
 
     def get_peer_site(self, site_identifier):

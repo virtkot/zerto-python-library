@@ -2358,5 +2358,5 @@ class ZertoClient:
             raise
 
         except Exception as e:
-            logging.error(f"Unexpected error while generating peer site pairing token: {e}")
+            logging.error(f"Unexpected error: {e}")
             raise

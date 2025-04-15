@@ -135,7 +135,7 @@ class VPGs:
                 logging.error("HTTPError occurred with no response attached.")
             raise
 
-    def commit_vpg(self, vpg_settings_id, vpg_name, sync=False, expected_status=ZertoVPGStatus.Initializing):
+    def commit_vpg(self, vpg_settings_id, vpg_name, sync=False, expected_status=ZertoVPGStatus.Initializing, timeout=30, interval=5):
         logging.info(f'VPGs.commit_vpg(zvm_address={self.client.zvm_address}, vpg_settings_id={vpg_settings_id}, vpg_name={vpg_name}, sync={sync})')
         commit_uri = f"https://{self.client.zvm_address}/v1/vpgSettings/{vpg_settings_id}/commit"
         headers = {
@@ -151,7 +151,7 @@ class VPGs:
 
             if sync:
                 # Wait for task completion
-                self.tasks.wait_for_task_completion(task_id, timeout=30, interval=5)
+                self.tasks.wait_for_task_completion(task_id, timeout=timeout, interval=interval)
                 logging.debug('sleeping 5 seconds ...')
                 self.wait_for_vpg_ready(vpg_name=vpg_name, timeout=30, interval=5, expected_status=expected_status)
                 return task_id
@@ -170,14 +170,14 @@ class VPGs:
             raise
 
         except Exception as e:
-            logging.error(f"Unexpected error while generating peer site pairing token: {e}")
+            logging.error(f"Unexpected error: {e}")
             raise
 
-    def create_vpg(self, basic, journal, recovery, networks, sync=True):
+    def create_vpg(self, basic, journal, recovery, networks, sync=True, status: ZertoVPGStatus = ZertoVPGStatus.Initializing, timeout=30, interval=5):
         vpg_name = basic.get("Name")
         logging.info(f'VPGs.create_vpg(zvm_address={self.client.zvm_address}, vpg_name={vpg_name}, sync={sync})')
         vpg_settings_id = self.create_vpg_settings(basic, journal, recovery, networks, vpg_identifier=None)
-        return self.commit_vpg(vpg_settings_id, vpg_name, sync, expected_status=ZertoVPGStatus.NotMeetingSLA)
+        return self.commit_vpg(vpg_settings_id, vpg_name, sync, expected_status=status, timeout=timeout, interval=interval)
 
     def wait_for_vpg_ready(self, vpg_name, timeout=180, interval=5, expected_status=ZertoVPGStatus.Initializing):
         logging.debug(f'VPGs.wait_for_vpg_ready(zvm_address={self.client.zvm_address}, vpg_name={vpg_name}, timeout={timeout}, interval={interval}, expected_status={ZertoVPGStatus.get_name_by_value(expected_status.value)})')
@@ -186,18 +186,20 @@ class VPGs:
         while True:
             time.sleep(interval)
             vpg_info = self.list_vpgs(vpg_name=vpg_name)
-            vpg_status = vpg_info.get("Status")
-            status_name = ZertoVPGStatus.get_name_by_value(vpg_status)
-            logging.debug(f"Checking VPG status for {vpg_name}: Current status = {status_name}")
+            # get status and convert string into enum
+            logging.debug(f"VPG status: {vpg_info.get('Status')}")
+            vpg_status: ZertoVPGStatus = ZertoVPGStatus(vpg_info.get("Status"))
+            logging.debug(f"Checking VPG status for {vpg_name}: Expected status = {ZertoVPGStatus.get_name_by_value(expected_status.value)}, Current status = {ZertoVPGStatus.get_name_by_value(vpg_status.value)}")
 
-            if vpg_status == expected_status.value:
-                logging.info(f"VPG {vpg_name} is now in the expected state: {status_name}")
+            # If VPG is in the expected status or passed the Initializing status too quickly and is in another status
+            if vpg_status == expected_status or (expected_status == ZertoVPGStatus.Initializing and vpg_status.value > ZertoVPGStatus.Initializing.value):
+                logging.info(f"VPG {vpg_name} is now in the expected state: {ZertoVPGStatus.get_name_by_value(vpg_status.value)}")
                 return vpg_info
 
             # Check if the timeout has been reached
             elapsed_time = time.time() - start_time
             if elapsed_time > timeout:
-                raise TimeoutError(f"VPG {vpg_name} did not reach the ready state within the allotted time. Current status: {status_name}")
+                raise TimeoutError(f"VPG {vpg_name} did not reach the {ZertoVPGStatus.get_name_by_value(expected_status.value)} state within the allotted time. Current status: {ZertoVPGStatus.get_name_by_value(vpg_status.value)}")
 
     def add_vm_to_vpg(self, vpg_name, vm_list_payload):
         logging.info(f'VPGs.add_vm_to_vpg(zvm_address={self.client.zvm_address}, vpg_name={vpg_name})')
@@ -213,7 +215,7 @@ class VPGs:
         new_vpg_settings_id = self.create_vpg_settings(basic=None, journal=None, recovery=None, networks=None, vpg_identifier=vpg_identifier)
 
         logging.info(f"Adding VMs to VPGSettings ID: {new_vpg_settings_id}")
-        #logging.debug(f"VM List Payload: {json.dumps(vm_list_payload, indent=4)}")
+        logging.debug(f"VM List Payload: {json.dumps(vm_list_payload, indent=4)}")
         vms_uri = f"https://{self.client.zvm_address}/v1/vpgSettings/{new_vpg_settings_id}/vms"
         headers = {
             'Content-Type': 'application/json',
@@ -240,7 +242,7 @@ class VPGs:
             raise
 
         except Exception as e:
-            logging.error(f"Unexpected error while generating peer site pairing token: {e}")
+            logging.error(f"Unexpected error: {e}")
             raise
 
     def remove_vm_from_vpg(self, vpg_name, vm_identifier):
@@ -280,7 +282,7 @@ class VPGs:
             raise
 
         except Exception as e:
-            logging.error(f"Unexpected error while generating peer site pairing token: {e}")
+            logging.error(f"Unexpected error: {e}")
             raise
 
     def failover_test(self, vpg_name, checkpoint_identifier=None, vm_name_list=None, sync=True):
@@ -347,10 +349,10 @@ class VPGs:
             raise
 
         except Exception as e:
-            logging.error(f"Unexpected error while generating peer site pairing token: {e}")
+            logging.error(f"Unexpected error: {e}")
             raise
 
-    def stop_failover_test(self, vpg_name, failoverTestSuccess, failoverTestSummary, sync=True):
+    def stop_failover_test(self, vpg_name, failoverTestSuccess=True, failoverTestSummary=None, sync=True):
         """
         Stop a failover test for a given VPG by its name.
 
@@ -371,9 +373,14 @@ class VPGs:
             'Authorization': f'Bearer {self.client.token}'
         }
 
+        body = {
+            "FailoverTestSuccess": failoverTestSuccess,
+            "FailoverTestSummary": failoverTestSummary
+        }
+
         try:
             logging.info(f"Stopping failover test for VPG '{vpg_name}'...")
-            response = requests.post(url, headers=headers, verify=self.client.verify_certificate)
+            response = requests.post(url, headers=headers, json=body, verify=self.client.verify_certificate)
             response.raise_for_status()
             task_id = response.json()
 
@@ -397,7 +404,7 @@ class VPGs:
             raise
 
         except Exception as e:
-            logging.error(f"Unexpected error while generating peer site pairing token: {e}")
+            logging.error(f"Unexpected error: {e}")
             raise
 
     def rollback_failover(self, vpg_name, sync=True):
@@ -447,7 +454,7 @@ class VPGs:
             raise
 
         except Exception as e:
-            logging.error(f"Unexpected error while generating peer site pairing token: {e}")
+            logging.error(f"Unexpected error: {e}")
             raise
 
     def delete_vpg(self, vpg_name, force=False, keep_recovery_volumes=True):
@@ -506,7 +513,7 @@ class VPGs:
             raise
 
         except Exception as e:
-            logging.error(f"Unexpected error while generating peer site pairing token: {e}")
+            logging.error(f"Unexpected error: {e}")
             raise
 
     # Added methods from VPGSettings
@@ -604,6 +611,7 @@ class VPGs:
         if networks:
             payload["Networks"] = networks
 
+        logging.debug(f"VPGs.create_vpg_settings: Payload: {json.dumps(payload, indent=4)}")
         try:
             response = requests.post(vpg_settings_uri, headers=headers, json=payload, verify=self.client.verify_certificate)
             response.raise_for_status()
@@ -622,7 +630,7 @@ class VPGs:
                 logging.error("HTTPError occurred with no response attached.")
             raise
         except Exception as e:
-            logging.error(f"Unexpected error while generating peer site pairing token: {e}")
+            logging.error(f"Unexpected error: {e}")
             raise
 
     def list_checkpoints(self, vpg_name, start_date=None, endd_date=None, checkpoint_date_str=None, latest=None):
